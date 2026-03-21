@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useRef, useMemo } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { Stars, Float, Box, Edges } from "@react-three/drei";
+import { useFrame } from "@react-three/fiber";
+import { Float, Box, Edges } from "@react-three/drei";
 import * as THREE from "three";
 
 const KnowledgeBlock = ({ position, color, delay }: { position: [number, number, number], color: string, delay: number }) => {
@@ -41,17 +41,11 @@ const CourseBackground = () => {
   }, []);
 
   return (
-    <div className="absolute inset-0 z-0 pointer-events-none opacity-30">
-      <Canvas camera={{ position: [0, 0, 15], fov: 75 }}>
-        <ambientLight intensity={0.5} />
-        <pointLight position={[10, 10, 10]} intensity={1.5} color="#a855f7" />
-        <Stars radius={50} depth={50} count={3000} factor={4} saturation={0} fade speed={1} />
-        
+    <group>
         {blocks.map((block, i) => (
-          <KnowledgeBlock key={i} {...block} />
+            <KnowledgeBlock key={i} {...block} />
         ))}
-      </Canvas>
-    </div>
+    </group>
   );
 };
 

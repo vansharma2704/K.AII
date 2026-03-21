@@ -4,14 +4,42 @@ import React, { useState } from "react";
 import { format } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InterviewReportDialog } from "./interview-report-dialog";
+import { Trash2, Loader2 } from "lucide-react";
+import { deleteVoiceInterview } from "@/actions/interview";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
-export function InterviewsGrid({ interviews }: { interviews: any[] }) {
+export function InterviewsGrid({ 
+    interviews, 
+    setInterviews 
+}: { 
+    interviews: any[], 
+    setInterviews: React.Dispatch<React.SetStateAction<any[]>> 
+}) {
     const [selectedInterview, setSelectedInterview] = useState<any | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const router = useRouter();
 
     const handleCardClick = (interview: any) => {
         setSelectedInterview(interview);
         setIsDialogOpen(true);
+    };
+
+    const handleDelete = async (e: React.MouseEvent, id: string) => {
+        e.stopPropagation(); // Prevent opening the dialog
+        if (!window.confirm("Are you sure you want to delete this interview analysis?")) return;
+
+        setDeletingId(id);
+        try {
+            await deleteVoiceInterview(id);
+            toast.success("Interview deleted successfully");
+            setInterviews(prev => prev.filter(i => i.id !== id));
+        } catch (error) {
+            toast.error("Failed to delete interview");
+        } finally {
+            setDeletingId(null);
+        }
     };
 
     // In Next.js SSR, we typically use a single pagination size to avoid hydration mismatches, 
@@ -35,23 +63,36 @@ export function InterviewsGrid({ interviews }: { interviews: any[] }) {
             {/* Reverted grid to 3 cols on large desktops */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {paginatedInterviews.map((interview: any) => (
-                    <div key={interview.id} onClick={() => handleCardClick(interview)} className="block">
-                        <Card className="hover:shadow-[0_0_40px_-10px_rgba(var(--color-primary),0.15)] transition-all duration-500 cursor-pointer h-full border-white/5 hover:border-white/20 group bg-[#050505]/80 backdrop-blur-xl rounded-[2rem] overflow-hidden relative flex flex-col justify-between">
-                            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div key={interview.id} onClick={() => handleCardClick(interview)} className="block relative group">
+                        <Card className="hover:shadow-[0_0_40px_-10px_rgba(var(--color-primary),0.15)] transition-all duration-500 cursor-pointer h-full border-white/5 hover:border-white/20 group/card bg-[#050505]/80 backdrop-blur-xl rounded-[2rem] overflow-hidden relative flex flex-col justify-between">
+                            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" />
                             <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
 
                             <CardHeader className="p-7 relative z-10 space-y-5">
                                 <div className="flex justify-between items-start">
-                                    <span className={`text-[10px] px-3 py-1.5 rounded-full font-black uppercase tracking-widest flex items-center gap-2 ${interview.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
-                                        <span className="h-1.5 w-1.5 rounded-full bg-current shadow-[0_0_8px_currentColor]"></span>
-                                        {interview.status}
-                                    </span>
+                                    <div className="flex gap-2 items-center">
+                                        <span className={`text-[10px] px-3 py-1.5 rounded-full font-black uppercase tracking-widest flex items-center gap-2 ${interview.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
+                                            <span className="h-1.5 w-1.5 rounded-full bg-current shadow-[0_0_8px_currentColor]"></span>
+                                            {interview.status}
+                                        </span>
+                                        <button
+                                            onClick={(e) => handleDelete(e, interview.id)}
+                                            disabled={deletingId === interview.id}
+                                            className="p-2 rounded-full bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/50 transition-all duration-300 opacity-0 group-hover:opacity-100 group-hover:scale-110"
+                                        >
+                                            {deletingId === interview.id ? (
+                                                <Loader2 className="w-4 h-4 text-red-500 animate-spin" />
+                                            ) : (
+                                                <Trash2 className="w-4 h-4 text-red-400 group-hover:text-red-500" />
+                                            )}
+                                        </button>
+                                    </div>
                                     <span className="text-xs text-muted-foreground/60 font-semibold uppercase tracking-wider">
                                         {format(new Date(interview.createdAt), "MMM dd")}
                                     </span>
                                 </div>
                                 <div>
-                                    <CardTitle className="text-2xl font-black text-white group-hover:text-primary transition-colors line-clamp-1 mb-2">
+                                    <CardTitle className="text-2xl font-black text-white group-hover/card:text-primary transition-colors line-clamp-1 mb-2">
                                         {interview.targetRole}
                                     </CardTitle>
                                     <CardDescription className="flex items-center gap-2 text-sm text-white/40 font-medium">

@@ -10,7 +10,8 @@ import {
     Sparkles, 
     Clock, 
     Trophy,
-    GraduationCap
+    GraduationCap,
+    ArrowRight
 } from 'lucide-react';
 import React from 'react'
 import { format, formatDistanceToNow } from 'date-fns';
@@ -145,7 +146,7 @@ const DashboardView = ({ insights, dashboardData }: DashboardViewProps) => {
 
             {/* 3. ANALYTICS ROW */}
             <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="bg-[#050505]/80 border-white/5 rounded-3xl p-6 group hover:border-primary/30 transition-all">
+                <Card className="bg-[#050505]/80 border-white/5 rounded-3xl p-6 group hover:border-primary/30 hover:shadow-[0_0_25px_-5px_rgba(168,85,247,0.4)] transition-all">
                     <p className="text-muted-foreground text-xs font-black uppercase tracking-widest mb-4">Total Interviews</p>
                     <div className="flex items-end justify-between">
                         <span className="text-4xl font-black text-white">{analytics.totalInterviews}</span>
@@ -155,7 +156,7 @@ const DashboardView = ({ insights, dashboardData }: DashboardViewProps) => {
                     </div>
                 </Card>
 
-                <Card className="bg-[#050505]/80 border-white/5 rounded-3xl p-6 group hover:border-primary/30 transition-all">
+                <Card className="bg-[#050505]/80 border-white/5 rounded-3xl p-6 group hover:border-primary/30 hover:shadow-[0_0_25px_-5px_rgba(168,85,247,0.4)] transition-all">
                     <p className="text-muted-foreground text-xs font-black uppercase tracking-widest mb-4">Avg. Interview Score</p>
                     <div className="flex items-end justify-between">
                         <span className="text-4xl font-black text-white">{analytics.avgInterviewScore || 0}%</span>
@@ -165,7 +166,7 @@ const DashboardView = ({ insights, dashboardData }: DashboardViewProps) => {
                     </div>
                 </Card>
 
-                <Card className="bg-[#050505]/80 border-white/5 rounded-3xl p-6 group hover:border-primary/30 transition-all">
+                <Card className="bg-[#050505]/80 border-white/5 rounded-3xl p-6 group hover:border-primary/30 hover:shadow-[0_0_25px_-5px_rgba(168,85,247,0.4)] transition-all">
                     <p className="text-muted-foreground text-xs font-black uppercase tracking-widest mb-4">Latest Quiz Score</p>
                     <div className="flex items-end justify-between">
                         <span className="text-4xl font-black text-white">{analytics.latestQuizScore || 0}%</span>
@@ -175,20 +176,28 @@ const DashboardView = ({ insights, dashboardData }: DashboardViewProps) => {
                     </div>
                 </Card>
 
-                <Card className="bg-[#050505]/80 border-white/5 rounded-3xl p-6 group hover:border-primary/30 transition-all">
-                    <p className="text-muted-foreground text-xs font-black uppercase tracking-widest mb-4">Last Active</p>
-                    <div className="flex items-end justify-between">
-                        <span className="text-xl font-bold text-white uppercase">{analytics.lastInterviewDate ? format(new Date(analytics.lastInterviewDate), 'MMM dd') : 'Never'}</span>
-                        <div className="p-3 bg-primary/10 rounded-2xl text-primary group-hover:scale-110 transition-transform">
-                            <Clock className="w-6 h-6" />
-                        </div>
+                <Card className="bg-[#050505]/80 border-white/5 rounded-3xl p-6 group hover:border-primary/30 hover:shadow-[0_0_25px_-5px_rgba(168,85,247,0.4)] transition-all flex flex-col justify-between">
+                    <div>
+                        <h3 className="text-xl font-black text-white mb-2 leading-tight">🚀 Analyze your Carrer</h3>
+                        <p className="text-xs text-muted-foreground font-medium leading-relaxed mb-4">
+                            Discover your Career Score & Skill Gaps
+                        </p>
                     </div>
+                    <Button 
+                        size="sm" 
+                        className="relative w-full bg-primary/10 hover:bg-primary/20 border border-primary/40 text-primary font-black rounded-xl transition-all duration-500 group/btn shadow-[0_0_15px_-3px_rgba(168,85,247,0.4)] hover:shadow-[0_0_20px_-2px_rgba(168,85,247,0.6)]" 
+                        onClick={() => window.location.href = '/career-insights'}
+                    >
+                        <span className="relative z-10 flex items-center justify-center gap-2">
+                            Analyse Now <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                        </span>
+                    </Button>
                 </Card>
             </section>
 
             {/* 3. INDUSTRY DYNAMICS GRID */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
-                 <Card className="bg-[#050505]/80 backdrop-blur-xl border-white/5 rounded-3xl p-6 group hover:border-white/10 transition-all">
+                 <Card className="bg-[#050505]/80 backdrop-blur-xl border-white/5 rounded-3xl p-6 group hover:border-primary/30 hover:shadow-[0_0_25px_-5px_rgba(168,85,247,0.4)] transition-all">
                      <div className="flex justify-between items-start mb-6">
                         <div className="p-3 bg-white/5 rounded-2xl group-hover:bg-primary/20 transition-colors">
                             <TrendingUp className="h-6 w-6 text-emerald-500" />
@@ -199,7 +208,7 @@ const DashboardView = ({ insights, dashboardData }: DashboardViewProps) => {
                      <Progress value={insights.growthRate} className='mt-4 h-1 bg-white/5' />
                  </Card>
 
-                 <Card className="bg-[#050505]/80 backdrop-blur-xl border-white/5 rounded-3xl p-6 group hover:border-white/10 transition-all">
+                 <Card className="bg-[#050505]/80 backdrop-blur-xl border-white/5 rounded-3xl p-6 group hover:border-primary/30 hover:shadow-[0_0_25px_-5px_rgba(168,85,247,0.4)] transition-all">
                      <div className="flex justify-between items-start mb-6">
                         <div className="p-3 bg-white/5 rounded-2xl group-hover:bg-primary/20 transition-colors text-white">
                             <BriefcaseIcon className="h-6 w-6" />
@@ -210,7 +219,7 @@ const DashboardView = ({ insights, dashboardData }: DashboardViewProps) => {
                      <div className={`h-1 w-full rounded-full mt-4 ${getDemandLevelColor(insights.demandLevel)} shadow-[0_0_10px_currentColor]`} />
                  </Card>
 
-                 <Card className="bg-[#050505]/80 backdrop-blur-xl border-white/5 rounded-3xl p-6 group hover:border-white/10 transition-all">
+                 <Card className="bg-[#050505]/80 backdrop-blur-xl border-white/5 rounded-3xl p-6 group hover:border-primary/30 hover:shadow-[0_0_25px_-5px_rgba(168,85,247,0.4)] transition-all">
                      <div className="flex justify-between items-start mb-6">
                         <div className="p-3 bg-white/5 rounded-2xl group-hover:bg-primary/20 transition-colors text-primary">
                             <Brain className="h-6 w-6" />
@@ -224,7 +233,7 @@ const DashboardView = ({ insights, dashboardData }: DashboardViewProps) => {
                      </div>
                  </Card>
 
-                 <Card className="bg-[#050505]/80 backdrop-blur-xl border-white/5 rounded-3xl p-6 group hover:border-white/10 transition-all">
+                 <Card className="bg-[#050505]/80 backdrop-blur-xl border-white/5 rounded-3xl p-6 group hover:border-primary/30 hover:shadow-[0_0_25px_-5px_rgba(168,85,247,0.4)] transition-all">
                     <div className="flex justify-between items-start mb-6">
                         <div className="p-3 bg-white/5 rounded-2xl group-hover:bg-primary/20 transition-colors text-muted-foreground">
                             <Clock className="h-6 w-6" />

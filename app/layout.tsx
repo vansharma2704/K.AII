@@ -8,7 +8,7 @@ import { dark } from '@clerk/themes'
 import { Toaster } from "@/components/ui/sonner";
 import { checkUser } from "@/lib/checkUser";
 import KaiAssistant from "@/components/kai-assistant";
-import DynamicBackground from "@/components/3d/dynamic-background";
+import GlobalCanvas from "@/components/3d/global-canvas";
 
 export const metadata: Metadata = {
   title: "k.ai - Your AI Career Coach",
@@ -25,7 +25,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  await checkUser();
+  console.log(">>> [DEBUG] Entering RootLayout...");
+  // await checkUser();
+  console.log(">>> [DEBUG] checkUser (commented) passed.");
 
   return (
     <ClerkProvider appearance={{
@@ -41,7 +43,7 @@ export default async function RootLayout({
             forcedTheme="dark"
             disableTransitionOnChange
           >
-            <DynamicBackground />
+            <GlobalCanvas />
             {/* header */}
             <Header />
             <main className="min-h-screen relative overflow-hidden">

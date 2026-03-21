@@ -164,26 +164,26 @@ export default function ResumeAnalyzerPage() {
 
       {/* ── Upload card (pre-result) ── */}
       {!result ? (
-        <Card className="max-w-2xl mx-auto border-dashed border-white/5 bg-[#050505]/40 backdrop-blur-xl p-12 text-center space-y-8 rounded-[2.5rem] hover:border-primary/50 transition-all duration-500">
-          <div className="w-20 h-20 bg-primary/10 rounded-[1.5rem] flex items-center justify-center mx-auto ring-1 ring-primary/20">
-            <Upload className="w-10 h-10 text-primary" />
+        <Card className="max-w-lg mx-auto border-dashed border-white/10 bg-[#050505]/40 backdrop-blur-xl p-8 text-center space-y-6 rounded-[2.5rem] hover:border-primary/50 transition-all duration-500 shadow-2xl">
+          <div className="w-16 h-16 bg-primary/10 rounded-[1.25rem] flex items-center justify-center mx-auto ring-1 ring-primary/20">
+            <Upload className="w-8 h-8 text-primary" />
           </div>
-          <div className="space-y-4">
-            <h2 className="text-2xl font-black text-white">Check Your Resume ATS Score</h2>
-            <p className="text-zinc-500 font-medium">Upload your Resume (PDF or DOCX) to get instant ATS analysis and improvement tips.</p>
+          <div className="space-y-3">
+            <h2 className="text-xl font-black text-white">Check Your Resume ATS Score</h2>
+            <p className="text-zinc-500 text-sm font-medium">Upload your Resume (PDF or DOCX) for instant AI analysis.</p>
           </div>
-          <form onSubmit={handleUpload} className="space-y-6">
+          <form onSubmit={handleUpload} className="space-y-5">
             <input type="file" id="resume-upload" className="hidden" accept=".pdf,.docx"
               onChange={(e) => setFile(e.target.files?.[0] || null)} />
             <label htmlFor="resume-upload"
-              className="block px-8 py-4 bg-[#0c0b11] border border-[#1e1b2e] rounded-xl text-white font-bold cursor-pointer hover:border-primary/50 transition-all truncate max-w-xs mx-auto">
+              className="block px-6 py-3.5 bg-[#0c0b11] border border-white/5 rounded-xl text-white text-sm font-bold cursor-pointer hover:border-primary/50 transition-all truncate max-w-[240px] mx-auto">
               {file ? file.name : "Select Document"}
             </label>
             <Button type="submit" disabled={!file || isAnalyzing}
-              className="w-full h-14 gradient text-white font-black text-lg rounded-xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
+              className="w-full h-12 gradient text-white font-black text-base rounded-xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
               {isAnalyzing ? (
-                <><Loader2 className="w-5 h-5 mr-3 animate-spin" />Analyzing Your Resume...</>
-              ) : "Analyze my Resume"}
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Analyzing...</>
+              ) : "Analyze Resume"}
             </Button>
           </form>
           <div className="pt-4 flex items-center justify-center gap-6 text-[10px] text-zinc-500 font-black uppercase tracking-widest">

@@ -45,12 +45,13 @@ const DynamicBackground = () => {
   }
 
   // Tools
-  if (pathname.includes("/tools") || pathname.includes("/prep-quiz")) {
+  if (pathname.includes("/tools") || pathname.includes("/prep-quiz") || pathname.includes("/career-insights")) {
     return <ToolsBackground />;
   }
 
-  // Default fallback
-  return <ParticleBackground />;
+  // Default fallback (Home page or unmatched)
+  // Returning null here because GlobalCosmicEffects handles the base space
+  return null;
 };
 
 export default DynamicBackground;

@@ -8,14 +8,16 @@ const isProtectedRoute = createRouteMatcher([
     "/ai-cover-letter(.*)",
     "/interview(.*)",
     "/onboarding(.*)",
+    "/career-insights(.*)",
 ])
-export default clerkMiddleware(async(auth,req)=>{
-  const {userId} = await auth();
-  if(!userId && isProtectedRoute(req)){
-    const {redirectToSignIn} = await auth();
-    return redirectToSignIn()
+export default clerkMiddleware(async (auth, req) => {
+  const { userId, redirectToSignIn } = await auth();
+  
+  console.log(">>> [DEBUG] Middleware triggered for path:", req.nextUrl.pathname, "UserId:", userId);
+
+  if (!userId && isProtectedRoute(req)) {
+    return redirectToSignIn();
   }
-  return NextResponse.next()
 });
 
 export const config = {

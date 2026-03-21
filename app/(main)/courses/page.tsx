@@ -3,7 +3,6 @@ import { db } from '@/lib/prisma';
 import { auth } from '@clerk/nextjs/server';
 import CourseGeneratorHero from './_components/course-generator-hero';
 import CourseDashboard from './_components/course-dashboard';
-import CourseBackground from '@/components/3d/course-background';
 
 export default async function CoursesPage() {
     const { userId } = await auth();
@@ -20,14 +19,8 @@ export default async function CoursesPage() {
     }
 
     return (
-        <div className="relative min-h-screen overflow-hidden w-full text-white">
-            {/* 3D Background */}
-            <CourseBackground />
-
-            <div className="absolute inset-0 bg-[#020202] -z-20" />
-            <div className="fixed inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)] pointer-events-none -z-10"></div>
-
-            <div className="container mx-auto py-16 px-4 md:px-8 relative z-10 max-w-7xl space-y-16">
+        <div className="relative min-h-screen overflow-hidden w-full text-white pt-24">
+            <div className="container mx-auto py-8 px-4 md:px-8 relative z-10 max-w-7xl space-y-24">
                 <CourseGeneratorHero />
 
                 <div className="space-y-6">

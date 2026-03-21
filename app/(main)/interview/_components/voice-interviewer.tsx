@@ -11,15 +11,19 @@ interface VoiceInterviewerProps {
     language: string;
 }
 
-const vapi = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY || "");
-
 const VoiceInterviewer: React.FC<VoiceInterviewerProps> = ({ targetRole, language }) => {
     const router = useRouter();
+    const vapiRef = useRef<Vapi | null>(null);
+
+    useEffect(() => {
+        if (!vapiRef.current) {
+            vapiRef.current = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY || "");
+        }
+    }, []);
     const [isCalling, setIsCalling] = useState(false);
     const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
     const [activeTranscript, setActiveTranscript] = useState<string>("");
     const [loading, setLoading] = useState(false);
-    const [timeLeft, setTimeLeft] = useState(300); // 5 minutes in seconds
 
     const [chatHistory, setChatHistory] = useState<{ role: string; text: string }[]>([]);
 
@@ -40,19 +44,6 @@ const VoiceInterviewer: React.FC<VoiceInterviewerProps> = ({ targetRole, languag
         }
     }, [chatHistory, isAgentSpeaking]);
 
-    // Timer Logic
-    useEffect(() => {
-        let interval: NodeJS.Timeout;
-        if (isCalling && timeLeft > 0) {
-            interval = setInterval(() => {
-                setTimeLeft((prev) => prev - 1);
-            }, 1000);
-        } else if (isCalling && timeLeft === 0) {
-            // Auto submit when time runs out
-            endCall();
-        }
-        return () => clearInterval(interval);
-    }, [isCalling, timeLeft]);
 
     useEffect(() => {
         const onSpeechStart = () => setIsAgentSpeaking(true);
@@ -99,23 +90,24 @@ const VoiceInterviewer: React.FC<VoiceInterviewerProps> = ({ targetRole, languag
         };
 
         const onError = (e: any) => {
-            console.error("Vapi Error:", e);
+            console.error("Vapi Error Details:", JSON.stringify(e, null, 2));
+            if (e.message) console.error("Error Message:", e.message);
             setLoading(false);
             setIsCalling(false);
         };
 
-        vapi.on("speech-start", onSpeechStart);
-        vapi.on("speech-end", onSpeechEnd);
-        vapi.on("message", onMessage);
-        vapi.on("call-end", onCallEnd);
-        vapi.on("error", onError);
+        vapiRef.current?.on("speech-start", onSpeechStart);
+        vapiRef.current?.on("speech-end", onSpeechEnd);
+        vapiRef.current?.on("message", onMessage);
+        vapiRef.current?.on("call-end", onCallEnd);
+        vapiRef.current?.on("error", onError);
 
         return () => {
-            vapi.off("speech-start", onSpeechStart);
-            vapi.off("speech-end", onSpeechEnd);
-            vapi.off("message", onMessage);
-            vapi.off("call-end", onCallEnd);
-            vapi.off("error", onError);
+            vapiRef.current?.off("speech-start", onSpeechStart);
+            vapiRef.current?.off("speech-end", onSpeechEnd);
+            vapiRef.current?.off("message", onMessage);
+            vapiRef.current?.off("call-end", onCallEnd);
+            vapiRef.current?.off("error", onError);
         };
     }, [targetRole, language, router]);
 
@@ -126,9 +118,8 @@ const VoiceInterviewer: React.FC<VoiceInterviewerProps> = ({ targetRole, languag
             const { getVapiAssistantOverrides } = await import('@/actions/vapi');
             const overrides = await getVapiAssistantOverrides(targetRole, language);
 
-            await vapi.start(process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID || "", overrides.assistantOverrides as any);
+            await vapiRef.current?.start(process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID || "", overrides.assistantOverrides as any);
             setIsCalling(true);
-            setTimeLeft(300); // 5 minutes in seconds
         } catch (e) {
             console.error(e);
         } finally {
@@ -137,7 +128,7 @@ const VoiceInterviewer: React.FC<VoiceInterviewerProps> = ({ targetRole, languag
     };
 
     const endCall = () => {
-        vapi.stop();
+        vapiRef.current?.stop();
     };
 
     return (
@@ -146,13 +137,10 @@ const VoiceInterviewer: React.FC<VoiceInterviewerProps> = ({ targetRole, languag
             {isCalling && (
                 <div className="z-20 flex gap-4 mt-4">
                     <div className="inline-flex items-center gap-2 px-6 py-2 rounded-full bg-[#111] border border-white/10 text-white font-mono text-lg shadow-xl font-bold">
-                        <div className="flex items-center gap-2 pr-4 border-r border-white/10">
+                        <div className="flex items-center gap-2">
                             <span className="h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse" />
-                            <span className="text-red-500 text-sm tracking-widest font-sans">REC</span>
+                            <span className="text-red-500 text-sm tracking-widest font-sans">LIVE SESSION</span>
                         </div>
-                        <span className="pl-2">
-                            {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
-                        </span>
                     </div>
                 </div>
             )}

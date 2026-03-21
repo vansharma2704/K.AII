@@ -60,9 +60,9 @@ const HeroV2 = () => {
                         </div>
 
                         {/* Action Buttons */}
-                        <motion.div variants={itemVariants} className="flex flex-wrap justify-center lg:justify-start gap-6 pt-4">
+                         <motion.div variants={itemVariants} className="flex flex-wrap justify-center lg:justify-start gap-6 pt-4">
                              <Link href="/dashboard">
-                                 <Button size="lg" className="group px-10 h-16 rounded-2xl glass border-white/10 text-white hover:bg-white/10 transition-all duration-500 hover:scale-110 hover:shadow-[0_0_50px_rgba(168,85,247,0.4)] active:scale-95 text-lg font-black flex items-center gap-3">
+                                 <Button size="lg" className="group px-10 h-16 rounded-2xl bg-gradient-to-br from-purple-900 via-purple-700 to-indigo-950 text-white border-t border-white/20 shadow-[0_0_40px_rgba(168,85,247,0.3)] hover:shadow-[0_0_60px_rgba(168,85,247,0.5)] transition-all duration-500 hover:scale-110 active:scale-95 text-lg font-black flex items-center gap-3">
                                     🚀 Start Your Journey
                                     <ArrowRight className="w-5 h-5 transition-transform duration-500 group-hover:translate-x-2" />
                                 </Button>

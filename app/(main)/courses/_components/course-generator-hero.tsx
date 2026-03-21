@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Sparkles, Play, Loader2, CheckCircle2 } from 'lucide-react';
 import { generateCourseLayout } from '@/actions/course';
 import { useRouter } from 'next/navigation';
+import { motion, Variants } from "framer-motion";
 
 export default function CourseGeneratorHero() {
     const [topic, setTopic] = useState('');
@@ -16,6 +17,23 @@ export default function CourseGeneratorHero() {
     const [statusText, setStatusText] = useState('');
     const router = useRouter();
 
+    const containerVariants: Variants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: { staggerChildren: 0.1, delayChildren: 0.2 }
+        }
+    };
+
+    const itemVariants: Variants = {
+        hidden: { opacity: 0, y: 20 },
+        visible: { 
+            opacity: 1, 
+            y: 0,
+            transition: { duration: 0.6, ease: "easeOut" }
+        }
+    };
+
     const handleGenerate = async () => {
         if (!topic) return;
         setIsGenerating(true);
@@ -23,13 +41,10 @@ export default function CourseGeneratorHero() {
         setStatusText("Designing Course Syllabus with AI...");
 
         try {
-            // STEP 1: Generate Layout (Fast)
             const layoutResult = await generateCourseLayout(topic, level);
             const { course, courseId } = layoutResult;
-
             setProgress(20);
 
-            // STEP 2: Generate chapters in batches of 2 (parallel Gemini, safe for gemma quota)
             const chapters = course.layout as any[];
             const chapterCount = chapters.length;
             let completed = 0;
@@ -63,9 +78,8 @@ export default function CourseGeneratorHero() {
             setStatusText("Course generated successfully!");
             setProgress(100);
 
-            // Refresh the page data (server component re-fetches) then redirect
             setTimeout(() => {
-                router.refresh(); // Re-fetches server component data
+                router.refresh();
                 router.push(`/courses/${courseId}/preview`);
             }, 1000);
 
@@ -77,33 +91,40 @@ export default function CourseGeneratorHero() {
     };
 
     return (
-        <div className="flex flex-col items-center text-center space-y-8 max-w-3xl mx-auto pt-10">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 backdrop-blur-md shadow-[0_0_15px_-3px_var(--color-primary)] text-primary uppercase tracking-[0.2em] text-[10px] font-black">
-                <Sparkles className="w-3 h-3" /> AI Course Architect
+        <motion.div 
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="flex flex-col items-center text-center space-y-12 max-w-4xl mx-auto pt-10"
+        >
+            <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass border border-white/10 text-primary-foreground text-xs font-bold uppercase tracking-[0.2em]">
+                <Sparkles className="w-4 h-4 text-primary animate-pulse" />
+                <span>The Future of Learning</span>
+            </motion.div>
+
+            <div className="space-y-6">
+                <motion.h1 variants={itemVariants} className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter leading-[0.9] text-white">
+                    Master Any <br />
+                    <span className="text-transparent bg-clip-text bg-gradient-to-br from-primary via-purple-400 to-white drop-shadow-2xl">
+                        Skill Instantly
+                    </span>
+                </motion.h1>
+
+                <motion.p variants={itemVariants} className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto font-medium leading-relaxed">
+                    Our AI researches the topic, builds the curriculum, voices the narration, and renders your personalized video course in seconds.
+                </motion.p>
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-white leading-tight">
-                Turn any topic into an <br className="hidden md:block" />
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary via-primary/80 to-primary/40 drop-shadow-sm">
-                    Interactive Video Course
-                </span>
-            </h1>
-
-            <p className="text-white/50 text-base md:text-lg max-w-2xl font-medium">
-                Our AI researches the topic, builds the curriculum, writes the slides, voices the narration, and renders the video—all in seconds.
-            </p>
-
             {!isGenerating ? (
-                <div className="w-full max-w-xl space-y-4 mt-4">
-                    {/* Level selector */}
+                <motion.div variants={itemVariants} className="w-full max-w-xl space-y-6 mt-4">
                     <div className="flex items-center justify-center gap-3">
                         {['Beginner', 'Intermediate', 'Advanced'].map((l) => (
                             <button
                                 key={l}
                                 onClick={() => setLevel(l)}
-                                className={`px-5 py-2 rounded-xl text-sm font-bold transition-all duration-200 border ${level === l
-                                    ? 'bg-primary/20 border-primary/40 text-primary shadow-[0_0_15px_-5px_var(--color-primary)]'
-                                    : 'bg-white/5 border-white/10 text-white/40 hover:text-white/60 hover:border-white/20'
+                                className={`px-5 py-2 rounded-xl text-sm font-bold transition-all duration-300 border ${level === l
+                                    ? 'bg-primary/20 border-primary/40 text-primary shadow-[0_0_20px_-5px_rgba(168,85,247,0.5)]'
+                                    : 'bg-white/5 border-white/5 text-white/40 hover:text-white/60 hover:bg-white/10'
                                     }`}
                             >
                                 {l}
@@ -111,49 +132,48 @@ export default function CourseGeneratorHero() {
                         ))}
                     </div>
 
-                    {/* Topic input */}
                     <div className="relative group">
-                        <div className="relative flex items-center bg-[#050505]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-2xl">
+                        <div className="relative flex items-center bg-[#0c0b11]/60 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 shadow-[0_0_50px_rgba(0,0,0,0.5)] group-hover:border-primary/50 transition-all duration-500">
                             <Input
-                                placeholder="e.g. Advanced Python Concurrency..."
+                                placeholder="e.g. Advanced Quantum Computing..."
                                 value={topic}
                                 onChange={(e) => setTopic(e.target.value)}
-                                className="flex-1 bg-transparent border-none text-white placeholder:text-white/30 text-lg px-4 h-14 focus-visible:ring-0 focus-visible:ring-offset-0"
+                                className="flex-1 bg-transparent border-none text-white placeholder:text-white/20 text-lg px-4 h-14 focus-visible:ring-0 focus-visible:ring-offset-0"
                                 onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
                             />
                             <Button
                                 size="lg"
                                 onClick={handleGenerate}
                                 disabled={!topic || isGenerating}
-                                className="h-14 px-8 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-base shadow-[0_0_20px_-5px_var(--color-primary)] transition-all"
+                                className="h-14 px-8 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black text-base shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all active:scale-95"
                             >
                                 Generate <Play className="ml-2 w-4 h-4 fill-current" />
                             </Button>
                         </div>
                     </div>
-                </div>
+                </motion.div>
             ) : (
-                <div className="w-full max-w-xl mt-8 space-y-6">
-                    <div className="p-8 rounded-3xl bg-[#0a0a0a] border border-white/10 relative overflow-hidden">
-                        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary via-primary/50 to-transparent" />
-                        <div className="flex flex-col items-center gap-6">
+                <motion.div variants={itemVariants} className="w-full max-w-xl mt-8 space-y-6">
+                    <div className="p-10 rounded-[2.5rem] bg-[#0c0b11]/80 backdrop-blur-3xl border border-white/10 relative overflow-hidden shadow-2xl">
+                        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary via-purple-400 to-transparent" />
+                        <div className="flex flex-col items-center gap-8">
                             {progress < 100 ? (
-                                <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                                <Loader2 className="w-16 h-16 text-primary animate-spin" />
                             ) : (
-                                <CheckCircle2 className="w-12 h-12 text-emerald-500 shadow-[0_0_20px_#10b981] rounded-full" />
+                                <CheckCircle2 className="w-16 h-16 text-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.5)] rounded-full" />
                             )}
 
-                            <div className="w-full space-y-3">
-                                <div className="flex justify-between text-sm font-semibold">
-                                    <span className="text-white/80">{statusText}</span>
+                            <div className="w-full space-y-4">
+                                <div className="flex justify-between text-sm font-black uppercase tracking-widest">
+                                    <span className="text-white/60">{statusText}</span>
                                     <span className="text-primary">{Math.round(progress)}%</span>
                                 </div>
-                                <Progress value={progress} className="h-2 bg-white/5" />
+                                <Progress value={progress} className="h-3 bg-white/5 rounded-full overflow-hidden" />
                             </div>
                         </div>
                     </div>
-                </div>
+                </motion.div>
             )}
-        </div>
+        </motion.div>
     );
 }
