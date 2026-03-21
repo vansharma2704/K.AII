@@ -1,0 +1,45 @@
+
+> senpai@0.1.0 vercel-build
+> prisma generate && next build 
+
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+
+✔ Generated Prisma Client (v6.19.0) to .\node_modules\@prisma\client in 321ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Interested in query caching in just a few lines of code? Try Accelerate today! https://pris.ly/tip-3-accelerate
+
+▲ Next.js 16.2.0 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 57s
+  Running TypeScript ...
+Failed to type check.
+
+./components/hero.tsx:78:37
+Type error: Type '{ hidden: { opacity: number; y: number; }; visible: { opacity: number; y: number; transition: { duration: number; ease: number[]; }; }; }' is not assignable to type 'Variants'.
+  Property 'visible' is incompatible with index signature.
+    Type '{ opacity: number; y: number; transition: { duration: number; ease: number[]; }; }' is not assignable to type 'Variant'.
+      Type '{ opacity: number; y: number; transition: { duration: number; ease: number[]; }; }' is not assignable to type 'TargetAndTransition'.
+        Type '{ opacity: number; y: number; transition: { duration: number; ease: number[]; }; }' is not assignable to type '{ transition?: Transition<any> | undefined; transitionEnd?: ResolvedValues$1 | undefined; }'.
+          Types of property 'transition' are incompatible.
+            Type '{ duration: number; ease: number[]; }' is not assignable to type 'Transition<any> | undefined'.
+              Type '{ duration: number; ease: number[]; }' is not assignable to type 'TransitionWithValueOverrides<any>'.
+                Type '{ duration: number; ease: number[]; }' is not assignable to type 'ValueAnimationTransition<any>'.
+                  Types of property 'ease' are incompatible.
+                    Type 'number[]' is not assignable to type 'Easing | Easing[] | undefined'.
+                      Type 'number[]' is not assignable to type 'EasingFunction | Easing[]'.
+                        Type 'number[]' is not assignable to type 'Easing[]'.
+                          Type 'number' is not assignable to type 'Easing'.
+
+  [90m76 |[0m                     >
+  [90m77 |[0m                         {[90m/* Small badge */[0m}
+[31m[1m>[0m [90m78 |[0m                         <motion.div variants={itemVariants} className=[32m'inline-flex items-c...[0m
+  [90m   |[0m                                     [31m[1m^[0m
+  [90m79 |[0m                             <span className=[32m'w-2 h-2 rounded-full bg-primary animate-pulse.[0m..
+  [90m80 |[0m                             <span>[33mAI[0m-[33mPOWERED[0m [33mCAREER[0m [33mINTELLIGENCE[0m</span>
+  [90m81 |[0m                         </motion.div>
+Next.js build worker exited with code: 1 and signal: null

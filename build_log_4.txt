@@ -1,0 +1,32 @@
+
+> senpai@0.1.0 vercel-build
+> prisma generate && next build 
+
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+
+✔ Generated Prisma Client (v6.19.0) to .\node_modules\@prisma\client in 350ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Interested in query caching in just a few lines of code? Try Accelerate today! https://pris.ly/tip-3-accelerate
+
+▲ Next.js 16.2.0 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 63s
+  Running TypeScript ...
+Failed to type check.
+
+./components/three-background.tsx:112:10
+Type error: Property 'args' is missing in type '{ attach: string; count: number; array: Float32Array<ArrayBuffer>; itemSize: number; }' but required in type 'Mutable<Overwrite<Partial<Overwrite<BufferAttribute, MathProps<BufferAttribute> & ReactProps<BufferAttribute>>>, Omit<...>>>'.
+
+  [90m110 |[0m     <points ref={pointsRef}>
+  [90m111 |[0m       <bufferGeometry>
+[31m[1m>[0m [90m112 |[0m         <bufferAttribute
+  [90m    |[0m          [31m[1m^[0m
+  [90m113 |[0m           attach=[32m"attributes-position"[0m
+  [90m114 |[0m           count={count}
+  [90m115 |[0m           array={points}
+Next.js build worker exited with code: 1 and signal: null

@@ -17,7 +17,7 @@ async function check() {
     });
     console.log('USERS COUNT:', users.length);
   } catch (e) {
-    console.error('ERROR:', e.message);
+    console.error('ERROR:', (e as Error).message);
   }
   process.exit(0);
 }

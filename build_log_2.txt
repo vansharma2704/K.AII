@@ -1,0 +1,42 @@
+
+> senpai@0.1.0 vercel-build
+> prisma generate && next build 
+
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+┌─────────────────────────────────────────────────────────┐
+│  Update available 6.19.0 -> 7.5.0                       │
+│                                                         │
+│  This is a major update - please follow the guide at    │
+│  https://pris.ly/d/major-version-upgrade                │
+│                                                         │
+│  Run the following to update                            │
+│    npm i --save-dev prisma@latest                       │
+│    npm i @prisma/client@latest                          │
+└─────────────────────────────────────────────────────────┘
+
+✔ Generated Prisma Client (v6.19.0) to .\node_modules\@prisma\client in 334ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Need your database queries to be 1000x faster? Accelerate offers you that and more: https://pris.ly/tip-2-accelerate
+
+▲ Next.js 16.2.0 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 69s
+  Running TypeScript ...
+Failed to type check.
+
+./check-quick.ts:20:29
+Type error: 'e' is of type 'unknown'.
+
+  [90m18 |[0m     console.log([32m'USERS COUNT:'[0m, users.length);
+  [90m19 |[0m   } [36mcatch[0m (e) {
+[31m[1m>[0m [90m20 |[0m     console.error([32m'ERROR:'[0m, e.message);
+  [90m   |[0m                             [31m[1m^[0m
+  [90m21 |[0m   }
+  [90m22 |[0m   process.exit([35m0[0m);
+  [90m23 |[0m }
+Next.js build worker exited with code: 1 and signal: null

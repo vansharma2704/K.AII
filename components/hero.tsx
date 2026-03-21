@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { Button } from './ui/button'
 import { ArrowRight } from 'lucide-react'
 import ThreeBackground from './three-background'
-import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion'
+import { motion, useMotionValue, useSpring, useTransform, Variants } from 'framer-motion'
 import { FloatingElements } from './floating-elements'
 import React from 'react'
 
@@ -48,7 +48,7 @@ const HeroSection = () => {
         }
     };
 
-    const itemVariants = {
+    const itemVariants: Variants = {
         hidden: { opacity: 0, y: 30 },
         visible: { 
             opacity: 1, 
