@@ -204,8 +204,8 @@ export default function JobMatcherPage() {
                             <p className="text-sm text-zinc-500 font-medium">Upload a custom resume for this role or we'll use your saved one.</p>
                         </div>
                         <div className="space-y-4">
-                            <input type="file" id="resume-upload" className="hidden" accept=".pdf,.docx" onChange={(e) => setResumeFile(e.target.files?.[0] || null)} />
-                            <label htmlFor="resume-upload" className="block w-full px-6 py-4 bg-[#0c0b11] border border-[#1e1b2e] rounded-2xl text-white font-bold cursor-pointer hover:border-primary/50 transition-all text-center text-sm">
+                            <input type="file" id="matcher-resume-upload" className="hidden" accept=".pdf,.docx" onChange={(e) => setResumeFile(e.target.files?.[0] || null)} />
+                            <label htmlFor="matcher-resume-upload" className="block w-full px-6 py-4 bg-[#0c0b11] border border-[#1e1b2e] rounded-2xl text-white font-bold cursor-pointer hover:border-primary/50 transition-all text-center text-sm">
                                 {resumeFile ? resumeFile.name : "+ Upload New Resume"}
                             </label>
                             <p className="text-[10px] text-zinc-600 font-black uppercase text-center tracking-widest">Recommended: Tailor per JD</p>

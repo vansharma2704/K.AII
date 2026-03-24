@@ -11,7 +11,28 @@ const wss = new WebSocketServer({ port: 8080 });
 
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const MODELS = ["gemma-3-27b-it"];
+
+async function generateWithFallback(prompt: string, isChat: boolean = false, history: any[] = []): Promise<string> {
+    let error = null;
+    for (const modelName of MODELS) {
+        try {
+            const model = genAI.getGenerativeModel({ model: modelName });
+            if (isChat) {
+                const chat = model.startChat({ history, generationConfig: { maxOutputTokens: 100 } });
+                const result = await chat.sendMessage([{ text: prompt }]);
+                return result.response.text();
+            } else {
+                const result = await model.generateContent([{ text: prompt }]);
+                return result.response.text();
+            }
+        } catch (err: any) {
+            console.error(`Vocode error with model ${modelName}:`, err.message);
+            error = err;
+        }
+    }
+    throw new Error("All models failed: " + error?.message);
+}
 
 const deepgram = createClient(process.env.DEEPGRAM_API_KEY!);
 
@@ -96,16 +117,7 @@ wss.on('connection', (ws: WebSocket) => {
                 session.skills = [...new Set([...session.skills, ...detected])];
             }
 
-            // 2. Generate AI Response via Gemini
-            const chat = model.startChat({
-                history: session.history,
-                generationConfig: {
-                    maxOutputTokens: 100,
-                },
-            });
-
-            const result = await chat.sendMessage([{ text: `${getSystemPrompt(session)}\n\nCandidate response: ${transcript}` }]);
-            const aiText = result.response.text();
+            const aiText = await generateWithFallback(`${getSystemPrompt(session)}\n\nCandidate response: ${transcript}`, true, session.history);
             
             // 3. Update State & history
             session.history.push({ role: 'user', parts: [{ text: transcript }] });
@@ -135,11 +147,7 @@ wss.on('connection', (ws: WebSocket) => {
 });
 
 async function detectSkills(text: string): Promise<string[]> {
-    const result = await model.generateContent([
-        { text: 'Extract technical skills from the text as a comma-separated list. If none, return "none".' },
-        { text: text }
-    ]);
-    const content = result.response.text() || "";
+    const content = await generateWithFallback(`Extract technical skills from the text as a comma-separated list. If none, return "none".\n\nText: ${text}`);
     if (content.toLowerCase().includes('none')) return [];
     return content.split(',').map(s => s.trim());
 }

@@ -1,19 +1,7 @@
 "use client"
 import { IndustryInsight } from '@prisma/client'
-import { 
-    Brain, 
-    Briefcase, 
-    BriefcaseIcon, 
-    LineChart, 
-    TrendingDown, 
-    TrendingUp, 
-    Sparkles, 
-    Clock, 
-    Trophy,
-    GraduationCap,
-    ArrowRight
-} from 'lucide-react';
-import React from 'react'
+import { TrendingDown, TrendingUp, LineChart, Sparkles, GraduationCap, Trophy, Brain, BriefcaseIcon, Clock, ArrowRight } from 'lucide-react';
+import React, { useMemo, memo } from 'react'
 import { format, formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -25,8 +13,7 @@ import {
     CardTitle,
 } from "@/components/ui/card"
 import { Progress } from '@/components/ui/progress';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, Area, ComposedChart } from 'recharts';
-import Link from 'next/link';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface DashboardViewProps {
     insights: IndustryInsight;
@@ -55,54 +42,58 @@ interface SalaryRange {
     location: string;
 }
 
-const DashboardView = ({ insights, dashboardData }: DashboardViewProps) => {
+const getDemandLevelColor = (level: string) => {
+    switch (level.toLowerCase()) {
+        case "high": return "bg-green-500";
+        case "medium": return "bg-yellow-500";
+        case "low": return "bg-red-500";
+        default: return "bg-gray-500";
+    }
+}
+
+const getMarketOutlookInfo = (outlook: string) => {
+    switch (outlook.toLowerCase()) {
+        case "positive": return { icon: TrendingUp, color: "text-green-500" };
+        case "neutral": return { icon: LineChart, color: "text-yellow-500" };
+        case "negative": return { icon: TrendingDown, color: "text-red-500" };
+        default: return { icon: LineChart, color: "text-gray-500" };
+    }
+}
+
+const DashboardView = memo(({ insights, dashboardData }: DashboardViewProps) => {
     const { analytics } = dashboardData;
     
-    const salaryRanges = (insights?.salaryRanges || []) as unknown as SalaryRange[];
-    const salaryData = salaryRanges.map((range) => {
-        // Normalize values to thousands (k)
-        // e.g. 1200000 -> 1200k, 12 (LPA) -> 1200k, 1200 -> 1200k
-        const normalize = (val: number) => {
-            if (!val) return 0;
-            // If raw Rupees (e.g., 1,200,000), convert to k
-            if (val > 100000) return Math.round(val / 1000); 
-            // If LPA (e.g., 12 for 12L), convert to k (12 * 100 = 1200k)
-            if (val > 0 && val < 200) return Math.round(val * 100); 
-            return val; // Already in k (e.g., 600, 1200)
-        };
+    const salaryData = useMemo(() => {
+        const salaryRanges = (insights?.salaryRanges || []) as unknown as SalaryRange[];
+        return salaryRanges.map((range) => {
+            const normalize = (val: number) => {
+                if (!val) return 0;
+                if (val > 100000) return Math.round(val / 1000); 
+                if (val > 0 && val < 200) return Math.round(val * 100); 
+                return val;
+            };
 
-        return {
-            name: range?.role,
-            min: normalize(range?.min),
-            max: normalize(range?.max),
-            median: normalize(range?.median),
-        };
-    })
+            return {
+                name: range?.role,
+                min: normalize(range?.min),
+                max: normalize(range?.max),
+                median: normalize(range?.median),
+            };
+        });
+    }, [insights?.salaryRanges]);
 
-    const getDemandLevelColor = (level: string) => {
-        switch (level.toLowerCase()) {
-            case "high": return "bg-green-500";
-            case "medium": return "bg-yellow-500";
-            case "low": return "bg-red-500";
-            default: return "bg-gray-500";
-        }
-    }
+    const { OutlookIcon, OutlookColor } = useMemo(() => {
+        const info = getMarketOutlookInfo(insights.marketOutlook);
+        return { OutlookIcon: info.icon, OutlookColor: info.color };
+    }, [insights.marketOutlook]);
 
-    const getMarketOutlookInfo = (outlook: string) => {
-        switch (outlook.toLowerCase()) {
-            case "positive": return { icon: TrendingUp, color: "text-green-500" };
-            case "neutral": return { icon: LineChart, color: "text-yellow-500" };
-            case "negative": return { icon: TrendingDown, color: "text-red-500" };
-            default: return { icon: LineChart, color: "text-gray-500" };
-        }
-    }
+    const lastUpdateDate = useMemo(() => 
+        format(new Date(insights.lastUpdated), "dd/MM/yyyy"), 
+    [insights.lastUpdated]);
 
-    const OutlookIcon = getMarketOutlookInfo(insights.marketOutlook).icon
-    const OutlookColor = getMarketOutlookInfo(insights.marketOutlook).color
-    const lastUpdateDate = format(new Date(insights.lastUpdated), "dd/MM/yyyy")
-    const nextUpdateDistance = formatDistanceToNow(new Date(insights.nextUpdate), { addSuffix: true })
-
-
+    const nextUpdateDistance = useMemo(() => 
+        formatDistanceToNow(new Date(insights.nextUpdate), { addSuffix: true }),
+    [insights.nextUpdate]);
 
     return (
         <div className='space-y-12 w-full max-w-7xl mx-auto pb-20'>
@@ -132,7 +123,6 @@ const DashboardView = ({ insights, dashboardData }: DashboardViewProps) => {
                         className="relative rounded-full bg-primary/10 hover:bg-primary/20 border border-primary/20 hover:border-primary/40 text-primary font-black px-6 py-5 transition-all duration-500 group" 
                         onClick={() => window.location.href = '/onboarding'}
                     >
-                        {/* Radiant Glow Layers */}
                         <div className="absolute -inset-1 bg-primary/20 rounded-full blur-xl opacity-40 group-hover:opacity-100 transition-opacity duration-700 animate-pulse" />
                         <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-purple-600/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                         
@@ -144,8 +134,8 @@ const DashboardView = ({ insights, dashboardData }: DashboardViewProps) => {
                 </div>
             </div>
 
-            {/* 3. ANALYTICS ROW */}
-            <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* 2. ANALYTICS ROW */}
+            <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
                 <Card className="bg-[#050505]/80 border-white/5 rounded-3xl p-6 group hover:border-primary/30 hover:shadow-[0_0_25px_-5px_rgba(168,85,247,0.4)] transition-all">
                     <p className="text-muted-foreground text-xs font-black uppercase tracking-widest mb-4">Total Interviews</p>
                     <div className="flex items-end justify-between">
@@ -178,7 +168,7 @@ const DashboardView = ({ insights, dashboardData }: DashboardViewProps) => {
 
                 <Card className="bg-[#050505]/80 border-white/5 rounded-3xl p-6 group hover:border-primary/30 hover:shadow-[0_0_25px_-5px_rgba(168,85,247,0.4)] transition-all flex flex-col justify-between">
                     <div>
-                        <h3 className="text-xl font-black text-white mb-2 leading-tight">🚀 Analyze your Carrer</h3>
+                        <h3 className="text-xl font-black text-white mb-2 leading-tight">🚀 Analyze your Career</h3>
                         <p className="text-xs text-muted-foreground font-medium leading-relaxed mb-4">
                             Discover your Career Score & Skill Gaps
                         </p>
@@ -279,10 +269,6 @@ const DashboardView = ({ insights, dashboardData }: DashboardViewProps) => {
                                         <linearGradient id="maxGradient" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="0%" stopColor="var(--color-secondary)" stopOpacity={0.8}/>
                                             <stop offset="100%" stopColor="var(--color-secondary)" stopOpacity={0.1}/>
-                                        </linearGradient>
-                                        <linearGradient id="radiantGradient" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.15}/>
-                                            <stop offset="100%" stopColor="transparent" stopOpacity={0}/>
                                         </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#111" vertical={false} />
@@ -402,9 +388,8 @@ const DashboardView = ({ insights, dashboardData }: DashboardViewProps) => {
                     </div>
                 </Card>
             </div>
-
         </div>
     )
-}
+});
 
 export default DashboardView

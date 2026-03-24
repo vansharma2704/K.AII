@@ -127,6 +127,7 @@ const HeroV2 = () => {
                                 src="/career_new.png" 
                                 alt="Senpai AI Career Platform" 
                                 fill
+                                sizes="(max-width: 768px) 100vw, 50vw"
                                 className="object-cover transition-transform duration-1000 group-hover:scale-[1.02]"
                                 priority
                             />

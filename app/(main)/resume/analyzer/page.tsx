@@ -127,7 +127,9 @@ export default function ResumeAnalyzerPage() {
     if (!file) return
     setIsAnalyzing(true)
     const formData = new FormData()
-    formData.append("file", file)
+    // Create a fresh file object to ensure we have clear access (fixes some Windows/Browser reference issues)
+    const blob = new Blob([file], { type: file.type });
+    formData.append("resumeFile", blob, file.name)
     try {
       const data = await analyzeResume(formData)
       setResult(data.analysis)
@@ -172,23 +174,42 @@ export default function ResumeAnalyzerPage() {
             <h2 className="text-xl font-black text-white">Check Your Resume ATS Score</h2>
             <p className="text-zinc-500 text-sm font-medium">Upload your Resume (PDF or DOCX) for instant AI analysis.</p>
           </div>
-          <form onSubmit={handleUpload} className="space-y-5">
-            <input type="file" id="resume-upload" className="hidden" accept=".pdf,.docx"
-              onChange={(e) => setFile(e.target.files?.[0] || null)} />
-            <label htmlFor="resume-upload"
-              className="block px-6 py-3.5 bg-[#0c0b11] border border-white/5 rounded-xl text-white text-sm font-bold cursor-pointer hover:border-primary/50 transition-all truncate max-w-[240px] mx-auto">
-              {file ? file.name : "Select Document"}
-            </label>
+          <form onSubmit={handleUpload} className="space-y-6">
+            <div className="space-y-4">
+              <input type="file" id="analyzer-resume-upload" className="hidden" 
+                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                onChange={(e) => setFile(e.target.files?.[0] || null)} />
+              
+              <label htmlFor="analyzer-resume-upload"
+                className={`block w-full px-6 py-10 border-2 border-dashed rounded-[2rem] transition-all cursor-pointer group
+                  ${file ? 'border-primary/50 bg-primary/5' : 'border-white/10 bg-[#0c0b11] hover:border-primary/30 hover:bg-white/5'}`}>
+                <div className="flex flex-col items-center gap-4">
+                  <div className={`p-4 rounded-2xl transition-all ${file ? 'bg-primary/20 scale-110' : 'bg-white/5'}`}>
+                    <Upload className={`w-8 h-8 ${file ? 'text-primary' : 'text-zinc-500'}`} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-white font-black text-lg">
+                      {file ? file.name : "Choose File"}
+                    </p>
+                    <p className="text-zinc-500 text-xs font-medium">
+                      {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : "Support for PDF and DOCX"}
+                    </p>
+                  </div>
+                </div>
+              </label>
+            </div>
+
             <Button type="submit" disabled={!file || isAnalyzing}
-              className="w-full h-12 gradient text-white font-black text-base rounded-xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
+              className="w-full h-14 gradient text-white font-black text-lg rounded-2xl shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
               {isAnalyzing ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Analyzing...</>
-              ) : "Analyze Resume"}
+                <><Loader2 className="w-5 h-5 mr-3 animate-spin" />Deep Scanning...</>
+              ) : "Start AI Analysis"}
             </Button>
           </form>
-          <div className="pt-4 flex items-center justify-center gap-6 text-[10px] text-zinc-500 font-black uppercase tracking-widest">
-            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Secure Encryption</span>
-            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> AI-Powered Analysis</span>
+          <div className="pt-2 flex items-center justify-center gap-6 text-[10px] text-zinc-600 font-bold uppercase tracking-widest">
+            <span className="flex items-center gap-2 italic">PDF / DOCX Only</span>
+            <span className="w-1 h-1 rounded-full bg-zinc-800" />
+            <span className="flex items-center gap-2 italic">Max 5MB</span>
           </div>
         </Card>
       ) : (

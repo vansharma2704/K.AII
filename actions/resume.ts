@@ -5,9 +5,7 @@ import { revalidatePath } from "next/cache";
 import { GoogleGenerativeAI } from "@google/generative-ai"
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
-const model = genAI.getGenerativeModel({
-  model: "gemma-3-27b-it"
-})
+const MODELS = ["gemma-3-27b-it"];
 export async function saveResume(content: any, formData?: any) {
   try {
     const { userId } = await auth();
@@ -156,15 +154,33 @@ export async function improveWithAi({ current, type, organization, title }: any)
     **Important:** Only return the improved description text without any additional explanations or headers.
   `;
 
-  try {
-    const result = await model.generateContent(prompt)
-    const response = result.response
-    const improvedContent = response.text().trim()
-    return improvedContent
-  } catch (err: any) {
-    console.log("Error improving content:", err.message);
-    throw new Error("Failed to improve content");
+  let improvedContent = "";
+  let error = null;
+
+  for (const modelName of MODELS) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      
+      // Implement 25s timeout
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error(`AI Timeout (${modelName})`)), 25000)
+      );
+      
+      const resultPromise = model.generateContent(prompt, { apiVersion: "v1beta" });
+      const result = await Promise.race([resultPromise, timeoutPromise]) as any;
+      
+      improvedContent = result.response.text().trim();
+      if (improvedContent) break;
+    } catch (err: any) {
+      console.error(`Improvement error with model ${modelName}:`, err.message);
+      error = err;
+    }
   }
+
+  if (!improvedContent) {
+    throw new Error("Failed to improve content: " + (error?.message || "AI returned empty response."));
+  }
+  return improvedContent;
 }
 
 export async function calculateATSScore(content: string) {
@@ -231,9 +247,34 @@ Rules:
 - Return ONLY the JSON`;
 
 
+  let text = "";
+  let error = null;
+
+  for (const modelName of MODELS) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      
+      // Implement 25s timeout
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error(`AI Timeout (${modelName})`)), 25000)
+      );
+      
+      const resultPromise = model.generateContent(prompt, { apiVersion: "v1beta" });
+      const result = await Promise.race([resultPromise, timeoutPromise]) as any;
+      
+      text = result.response.text().trim();
+      if (text) break;
+    } catch (err: any) {
+      console.error(`ATS Score error with model ${modelName}:`, err.message);
+      error = err;
+    }
+  }
+
+  if (!text) {
+    return { score: 0, label: "Error", suggestions: ["Could not calculate ATS score. " + (error?.message || "")] };
+  }
+
   try {
-    const result = await model.generateContent(prompt);
-    let text = result.response.text().trim();
     text = text.replace(/```json/g, '').replace(/```/g, '').trim();
     const parsed = JSON.parse(text);
     return {
@@ -242,7 +283,7 @@ Rules:
       suggestions: parsed.suggestions || []
     };
   } catch (err: any) {
-    console.error("ATS score error:", err.message);
+    console.error("ATS score parse error:", err.message);
     return { score: 0, label: "Error", suggestions: ["Could not calculate ATS score. Please try again."] };
   }
 }

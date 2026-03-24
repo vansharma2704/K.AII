@@ -5,7 +5,7 @@ import { auth } from "@clerk/nextjs/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const MODELS = ['gemma-3-27b-it', 'gemini-2.5-flash'];
+const MODELS = ["gemma-3-27b-it"];
 
 export async function generateQuizQuestions(topic: string, mode: string) {
     const { userId } = await auth();
@@ -42,30 +42,46 @@ export async function generateQuizQuestions(topic: string, mode: string) {
     let text = "";
     
     // Retry logic
-    for (let attempt = 0; attempt < 3; attempt++) {
+    let error = null;
+    for (let attempt = 0; attempt < 1; attempt++) { // Reduced retry for production feel
         for (const modelName of MODELS) {
             try {
                 const model = genAI.getGenerativeModel({ model: modelName });
-                const result = await model.generateContent(prompt);
+                
+                // Implement 45s timeout for large quiz generation
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error(`AI Timeout (${modelName})`)), 45000)
+                );
+                
+                const resultPromise = model.generateContent(prompt);
+                const result = await Promise.race([resultPromise, timeoutPromise]) as any;
+                
                 text = result.response.text();
-                text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                
+                // Extract JSON array
+                const jsonMatch = text.match(/\[[\s\S]*\]/);
+                if (!jsonMatch) throw new Error("No JSON array found in response");
+                
+                text = jsonMatch[0].trim();
                 
                 // Validate parseable and length
                 const parsed = JSON.parse(text);
-                if (!Array.isArray(parsed) || parsed.length !== 20) {
-                    throw new Error("Did not generate exactly 20 questions.");
+                if (!Array.isArray(parsed) || parsed.length === 0) {
+                    throw new Error("AI returned empty or invalid question array.");
                 }
-                break; // Break model loop
+                
+                if (parsed.length > 0) break; // Success
             } catch (err: any) {
-                console.warn(`Model ${modelName} failed on attempt ${attempt + 1}: ${err.message.slice(0, 50)}`);
-                text = ""; // Reset
+                console.warn(`Model ${modelName} failed: ${err.message}`);
+                error = err;
+                text = "";
             }
         }
-        if (text) break; // Break retry loop
+        if (text) break;
     }
 
     if (!text) {
-        throw new Error("Failed to generate quiz from AI. Please try again.");
+        throw new Error("Failed to generate quiz: " + (error?.message || "AI returned empty response."));
     }
 
     try {
@@ -113,18 +129,32 @@ export async function submitQuizAndGetFeedback(
             You are a technical mentor analyzing a student's quiz results.
             Topic: ${topic}
             Difficulty: ${mode}
-            Score: ${score}/20
+            Score: ${score}/${questionsAndAnswers.length}
             
             The student got the following questions WRONG:
             ${JSON.stringify(wrongAnswers, null, 2)}
 
-            Provide a concise, highly specific 2-4 sentence paragraph of constructive feedback pointing out specific concepts they should restudy based on these exact mistakes. Do not be overly generic. No markdown formatting.
+            Provide a concise, highly specific 2-4 sentence paragraph of constructive feedback. No markdown.
         `;
 
         try {
-            const model = genAI.getGenerativeModel({ model: "gemma-3-27b-it" });
-            const result = await model.generateContent(feedbackPrompt);
-            improvementTip = result.response.text().trim();
+            for (const modelName of MODELS) {
+                try {
+                    const model = genAI.getGenerativeModel({ model: modelName });
+                    
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error(`AI Timeout (${modelName})`)), 20000)
+                    );
+                    
+                    const resultPromise = model.generateContent(feedbackPrompt);
+                    const result = await Promise.race([resultPromise, timeoutPromise]) as any;
+                    
+                    improvementTip = result.response.text().trim();
+                    if (improvementTip) break;
+                } catch (err: any) {
+                    console.error(`Feedback error with model ${modelName}:`, err.message);
+                }
+            }
         } catch (e) {
             console.error("Feedback generation failed, using fallback.");
             improvementTip = "You missed some questions. Review the concepts you got wrong to improve next time.";
@@ -137,7 +167,7 @@ export async function submitQuizAndGetFeedback(
     const assessment = await db.assessment.create({
         data: {
             userId: user.id,
-            quizScore: (score / 20) * 100, // Percentage
+            quizScore: (score / questionsAndAnswers.length) * 100, // Percentage
             questions: questionsAndAnswers,
             category: categoryName,
             improvementTip: improvementTip

@@ -4,9 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { GoogleGenerativeAI } from "@google/generative-ai"
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
-const model = genAI.getGenerativeModel({
-    model: "gemma-3-27b-it"
-})
+const MODELS = ["gemma-3-27b-it"];
 
 // Define types for quiz data
 interface QuizQuestion {
@@ -61,12 +59,35 @@ export async function generateQuiz() {
     }
   `;
 
-        const result = await model.generateContent(prompt)
-        const response = result.response
-        const text = response.text()
+        let text = "";
+        let error = null;
+
+        for (const modelName of MODELS) {
+            try {
+                const model = genAI.getGenerativeModel({ model: modelName });
+                
+                // Implement 25s timeout
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error(`AI Timeout (${modelName})`)), 25000)
+                );
+                
+                const resultPromise = model.generateContent(prompt, { apiVersion: "v1beta" });
+                const result = await Promise.race([resultPromise, timeoutPromise]) as any;
+                
+                text = result.response.text();
+                if (text) break;
+            } catch (err: any) {
+                console.error(`Quiz error with model ${modelName}:`, err.message);
+                error = err;
+            }
+        }
+
+        if (!text) {
+            throw new Error("Failed to generate quiz: " + (error?.message || "AI returned empty response."));
+        }
         const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
         const quiz = JSON.parse(cleanedText);
-        return quiz.questions
+        return quiz.questions;
     } catch (error: any) {
         console.error("Error generating quiz:", error.message)
         throw new Error("Failed to generate quiz questions")
@@ -126,9 +147,24 @@ export async function saveQuizResult(
         `;
 
         try {
-            const result = await model.generateContent(improvementPrompt)
-            const response = result.response
-            improvementTip = response.text().trim()
+            for (const modelName of MODELS) {
+                try {
+                    const model = genAI.getGenerativeModel({ model: modelName });
+                    
+                    // Implement 25s timeout
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error(`AI Timeout (${modelName})`)), 25000)
+                    );
+                    
+                    const resultPromise = model.generateContent(improvementPrompt, { apiVersion: "v1beta" });
+                    const result = await Promise.race([resultPromise, timeoutPromise]) as any;
+                    
+                    improvementTip = result.response.text().trim();
+                    if (improvementTip) break;
+                } catch (err: any) {
+                    console.error(`Improvement tip error with model ${modelName}:`, err.message);
+                }
+            }
         } catch (error: any) {
             console.error("Error generating improvement tip", error.message)
             improvementTip = "Focus on reviewing key concepts in your industry to improve your performance."

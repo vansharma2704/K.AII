@@ -13,6 +13,32 @@ import { useUser } from '@clerk/nextjs'
 import { toast } from 'sonner'
 import ResumePreview from './resume-preview'
 import ATSScore from './ats-score'
+import React, { useMemo, useCallback, memo } from 'react'
+
+const SectionHead = memo(({ id, title, count, isOpen, num, onToggle }: { id: string; title: string; count?: number; isOpen: boolean; num: number; onToggle: (id: string) => void }) => {
+    return (
+        <div className="flex items-center justify-between cursor-pointer group py-3 px-4 rounded-xl hover:bg-white/[0.02] transition-colors" onClick={() => onToggle(id)}>
+            <h2 className="text-sm font-bold text-foreground/90 flex items-center gap-3 uppercase tracking-wider">
+                <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black transition-all ${isOpen
+                    ? 'bg-gradient-to-br from-primary/30 to-primary/10 text-primary shadow-[0_0_10px_-3px_var(--color-primary)]'
+                    : 'bg-secondary border border-border text-muted-foreground'
+                    }`}>
+                    {num}
+                </span>
+                {title}
+                {count !== undefined && count > 0 && (
+                    <span className="text-[10px] font-black bg-primary/10 text-primary px-2.5 py-0.5 rounded-full border border-primary/20 shadow-[0_0_8px_-3px_var(--color-primary)]">{count}</span>
+                )}
+            </h2>
+            {isOpen
+                ? <ChevronDown className="w-4 h-4 text-primary transition-colors" />
+                : <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+            }
+        </div>
+    );
+});
+
+SectionHead.displayName = "SectionHead";
 
 const ResumeBuilder = ({ initialContent, initialFormData }: any) => {
     const [isGenerating, setIsGenerating] = useState(false)
@@ -31,9 +57,9 @@ const ResumeBuilder = ({ initialContent, initialFormData }: any) => {
         education: false, projects: false, certifications: false,
         achievements: false, languages: false,
     });
-    const toggleSection = (key: string) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+    const toggleSection = useCallback((id: string) => setOpenSections(prev => ({ ...prev, [id]: !prev[id] })), []);
 
-    const parsedFormData = initialFormData ? JSON.parse(initialFormData) : null;
+    const parsedFormData = useMemo(() => initialFormData ? JSON.parse(initialFormData) : null, [initialFormData]);
     useEffect(() => { setIsMounted(true) }, [])
 
     const { control, register, watch } = useForm({
@@ -48,7 +74,7 @@ const ResumeBuilder = ({ initialContent, initialFormData }: any) => {
     const { loading: isSaving, fn: saveResumeFn } = useFetch(saveResume)
     const formValues = watch()
 
-    const getContactMarkdown = () => {
+    const contactMarkdown = useMemo(() => {
         const { contactInfo } = formValues || {};
         if (!contactInfo) return "";
         const parts = [];
@@ -61,12 +87,12 @@ const ResumeBuilder = ({ initialContent, initialFormData }: any) => {
         return parts.length > 0
             ? `<div align="center">\n\n# ${user?.fullName || 'Your Name'}\n\n${parts.join(" | ")}\n\n</div>`
             : `<div align="center">\n\n# ${user?.fullName || 'Your Name'}\n\n</div>`;
-    }
+    }, [formValues.contactInfo, user?.fullName]);
 
-    const getCombinedContent = () => {
+    const combinedContent = useMemo(() => {
         const { summary, skills, experience, education, projects, certifications, achievements, languages } = formValues || {}
         return [
-            getContactMarkdown(),
+            contactMarkdown,
             summary && `## Professional Summary\n\n${summary}`,
             skills && `## Skills\n\n${skills}`,
             experience?.length > 0 && entriesToMarkdown({ entries: experience, type: "Work Experience" }),
@@ -75,17 +101,17 @@ const ResumeBuilder = ({ initialContent, initialFormData }: any) => {
             certifications?.length > 0 && certificationsToMarkdown(certifications),
             achievements && `## Achievements & Awards\n\n${achievements}`,
             languages && `## Languages\n\n${languages}`,
-        ].filter(Boolean).join("\n\n")
-    }
+        ].filter(Boolean).join("\n\n");
+    }, [formValues, contactMarkdown]);
 
     useEffect(() => {
-        setPreviewContent(getCombinedContent() || initialContent || "")
-    }, [formValues])
+        setPreviewContent(combinedContent || initialContent || "")
+    }, [combinedContent, initialContent])
 
-    const onSubmit = async () => {
-        try { await saveResumeFn(getCombinedContent(), formValues); }
+    const onSubmit = useCallback(async () => {
+        try { await saveResumeFn(combinedContent, formValues); }
         catch (error: any) { toast.error(error?.message || "Failed to save resume"); }
-    };
+    }, [combinedContent, formValues, saveResumeFn]);
 
     const generatePDF = async () => {
         if (typeof window === 'undefined') return;
@@ -141,30 +167,6 @@ const ResumeBuilder = ({ initialContent, initialFormData }: any) => {
     let sectionCounter = 0;
     const nextNum = () => ++sectionCounter;
 
-    const SectionHead = ({ id, title, count }: { id: string; title: string; count?: number }) => {
-        const num = nextNum();
-        return (
-            <div className="flex items-center justify-between cursor-pointer group py-3 px-4 rounded-xl hover:bg-white/[0.02] transition-colors" onClick={() => toggleSection(id)}>
-                <h2 className="text-sm font-bold text-foreground/90 flex items-center gap-3 uppercase tracking-wider">
-                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black transition-all ${openSections[id]
-                        ? 'bg-gradient-to-br from-primary/30 to-primary/10 text-primary shadow-[0_0_10px_-3px_var(--color-primary)]'
-                        : 'bg-secondary border border-border text-muted-foreground'
-                        }`}>
-                        {num}
-                    </span>
-                    {title}
-                    {count !== undefined && count > 0 && (
-                        <span className="text-[10px] font-black bg-primary/10 text-primary px-2.5 py-0.5 rounded-full border border-primary/20 shadow-[0_0_8px_-3px_var(--color-primary)]">{count}</span>
-                    )}
-                </h2>
-                {openSections[id]
-                    ? <ChevronDown className="w-4 h-4 text-primary transition-colors" />
-                    : <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                }
-            </div>
-        );
-    };
-
     const inputCls = "w-full bg-[#0f172a] border-[#334155] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-muted-foreground/50 transition-all outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500";
 
     return (
@@ -218,7 +220,7 @@ const ResumeBuilder = ({ initialContent, initialFormData }: any) => {
 
                     {/* 2 — Experience */}
                     <div className="rounded-2xl border border-border/60 bg-white/[0.02] p-1">
-                        <SectionHead id="experience" title="Experience" count={formValues.experience?.length} />
+                        <SectionHead id="experience" title="Experience" count={formValues.experience?.length} isOpen={openSections.experience} num={nextNum()} onToggle={toggleSection} />
                         {openSections.experience && (
                             <div className="px-4 pb-5 pt-2">
                                 <Controller name='experience' control={control}
@@ -230,7 +232,7 @@ const ResumeBuilder = ({ initialContent, initialFormData }: any) => {
 
                     {/* 3 — Education */}
                     <div className="rounded-2xl border border-border/60 bg-white/[0.02] p-1">
-                        <SectionHead id="education" title="Education" count={formValues.education?.length} />
+                        <SectionHead id="education" title="Education" count={formValues.education?.length} isOpen={openSections.education} num={nextNum()} onToggle={toggleSection} />
                         {openSections.education && (
                             <div className="px-4 pb-5 pt-2">
                                 <Controller name='education' control={control}
@@ -242,7 +244,7 @@ const ResumeBuilder = ({ initialContent, initialFormData }: any) => {
 
                     {/* 4 — Skills */}
                     <div className="rounded-2xl border border-border/60 bg-white/[0.02] p-1">
-                        <SectionHead id="skills" title="Skills" />
+                        <SectionHead id="skills" title="Skills" isOpen={openSections.skills} num={nextNum()} onToggle={toggleSection} />
                         {openSections.skills && (
                             <div className="px-4 pb-5 pt-2">
                                 <Controller name='skills' control={control}
@@ -254,7 +256,7 @@ const ResumeBuilder = ({ initialContent, initialFormData }: any) => {
 
                     {/* 5 — Projects */}
                     <div className="rounded-2xl border border-border/60 bg-white/[0.02] p-1">
-                        <SectionHead id="projects" title="Projects" count={formValues.projects?.length} />
+                        <SectionHead id="projects" title="Projects" count={formValues.projects?.length} isOpen={openSections.projects} num={nextNum()} onToggle={toggleSection} />
                         {openSections.projects && (
                             <div className="px-4 pb-5 pt-2">
                                 <Controller name='projects' control={control}
@@ -266,7 +268,7 @@ const ResumeBuilder = ({ initialContent, initialFormData }: any) => {
 
                     {/* 6 — Certifications */}
                     <div className="rounded-2xl border border-border/60 bg-white/[0.02] p-1">
-                        <SectionHead id="certifications" title="Certifications" count={formValues.certifications?.length} />
+                        <SectionHead id="certifications" title="Certifications" count={formValues.certifications?.length} isOpen={openSections.certifications} num={nextNum()} onToggle={toggleSection} />
                         {openSections.certifications && (
                             <div className="px-4 pb-5 pt-2">
                                 <Controller name='certifications' control={control}
@@ -278,7 +280,7 @@ const ResumeBuilder = ({ initialContent, initialFormData }: any) => {
 
                     {/* 7 — Achievements */}
                     <div className="rounded-2xl border border-border/60 bg-white/[0.02] p-1">
-                        <SectionHead id="achievements" title="Achievements & Awards" />
+                        <SectionHead id="achievements" title="Achievements & Awards" isOpen={openSections.achievements} num={nextNum()} onToggle={toggleSection} />
                         {openSections.achievements && (
                             <div className="px-4 pb-5 pt-2">
                                 <Controller name='achievements' control={control}
@@ -290,7 +292,7 @@ const ResumeBuilder = ({ initialContent, initialFormData }: any) => {
 
                     {/* 8 — Languages */}
                     <div className="rounded-2xl border border-border/60 bg-white/[0.02] p-1">
-                        <SectionHead id="languages" title="Languages" />
+                        <SectionHead id="languages" title="Languages" isOpen={openSections.languages} num={nextNum()} onToggle={toggleSection} />
                         {openSections.languages && (
                             <div className="px-4 pb-5 pt-2">
                                 <Controller name='languages' control={control}

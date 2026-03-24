@@ -78,10 +78,9 @@ export default function CourseGeneratorHero() {
             setStatusText("Course generated successfully!");
             setProgress(100);
 
-            setTimeout(() => {
-                router.refresh();
-                router.push(`/courses/${courseId}/preview`);
-            }, 1000);
+            // Immediate redirect for "automatic open" feel
+            router.refresh();
+            router.push(`/courses/${courseId}/preview`);
 
         } catch (error: any) {
             console.error("Generation failed:", error);

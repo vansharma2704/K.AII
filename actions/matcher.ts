@@ -7,11 +7,23 @@ import mammoth from "mammoth";
 import { db } from "@/lib/prisma";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const model = genAI.getGenerativeModel({ model: "gemma-3-27b-it" });
+const MODELS = ["gemma-3-27b-it"];
 
 async function extractTextFromFile(file: File): Promise<string> {
-  const buffer = Buffer.from(await file.arrayBuffer());
-  if (file.type === "application/pdf") {
+  console.log("Matcher: Reading file ->", file.name, "Type:", file.type, "Size:", file.size);
+  if (!file || file.size === 0) return "";
+
+  const chunks = [];
+  const reader = file.stream().getReader();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+  const buffer = Buffer.concat(chunks.map(chunk => Buffer.from(chunk)));
+  console.log("Matcher: Buffer created, length:", buffer.length);
+
+  if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
     try {
       const data = await pdf(buffer);
       return data.text;
@@ -34,42 +46,43 @@ async function extractTextFromFile(file: File): Promise<string> {
 }
 
 export async function matchJob(formData: FormData) {
-  const { userId: clerkUserId } = await auth();
-  if (!clerkUserId) throw new Error("User not authenticated");
+  try {
+    const { userId: clerkUserId } = await auth();
+    if (!clerkUserId) throw new Error("User not authenticated");
 
-  const user = await db.user.findUnique({ where: { clerkUserId } });
-  if (!user) throw new Error("User not found");
+    const user = await db.user.findUnique({ where: { clerkUserId } });
+    if (!user) throw new Error("User not found");
 
-  const resumeFile = formData.get("resumeFile") as File;
-  const jdFile = formData.get("jdFile") as File;
-  const jdTextPasted = formData.get("jdText") as string;
+    const resumeFile = formData.get("resumeFile") as File;
+    const jdFile = formData.get("jdFile") as File;
+    const jdTextPasted = formData.get("jdText") as string;
 
-  // Get resume text
-  let resumeText = "";
-  if (resumeFile && resumeFile.size > 0) {
-    resumeText = await extractTextFromFile(resumeFile);
-  } else {
-    const existingResume = await db.resume.findUnique({ where: { userId: user.id } });
-    if (existingResume) {
-      resumeText = existingResume.content;
+    // Get resume text
+    let resumeText = "";
+    if (resumeFile && resumeFile.size > 0) {
+      resumeText = await extractTextFromFile(resumeFile);
+    } else {
+      const existingResume = await db.resume.findUnique({ where: { userId: user.id } });
+      if (existingResume) {
+        resumeText = existingResume.content;
+      }
     }
-  }
 
-  if (!resumeText || resumeText.trim().length < 30) {
-    throw new Error("Resume content not found. Please upload a resume file.");
-  }
+    if (!resumeText || resumeText.trim().length < 30) {
+      throw new Error("Resume content not found. Please upload a resume file.");
+    }
 
-  // Get JD text
-  let jdText = jdTextPasted || "";
-  if (jdFile && jdFile.size > 0) {
-    jdText = await extractTextFromFile(jdFile);
-  }
+    // Get JD text
+    let jdText = jdTextPasted || "";
+    if (jdFile && jdFile.size > 0) {
+      jdText = await extractTextFromFile(jdFile);
+    }
 
-  if (!jdText || jdText.trim().length < 50) {
-    throw new Error("Job description is too short. Please provide more details.");
-  }
+    if (!jdText || jdText.trim().length < 50) {
+      throw new Error("Job description is too short. Please provide more details.");
+    }
 
-  const prompt = `
+    const prompt = `
 You are an AI Job Matcher and Career Strategist.
 Compare the following Resume with the Job Description.
 
@@ -115,9 +128,32 @@ Rules:
 - bulletSuggestions should focus on matching the Job Description.
   `.trim();
 
-  try {
-    const result = await model.generateContent(prompt);
-    const rawText = result.response.text().trim();
+    let rawText = "";
+    let error = null;
+
+    for (const modelName of MODELS) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        
+        // Implement 25s timeout
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error(`AI Timeout (${modelName})`)), 25000)
+        );
+        
+        const resultPromise = model.generateContent(prompt, { apiVersion: "v1beta" });
+        const result = await Promise.race([resultPromise, timeoutPromise]) as any;
+        
+        rawText = result.response.text().trim();
+        if (rawText) break;
+      } catch (err: any) {
+        console.error(`Matcher error with model ${modelName}:`, err.message);
+        error = err;
+      }
+    }
+
+    if (!rawText) {
+      throw new Error("Failed to analyze job match: " + (error?.message || "AI returned empty response."));
+    }
 
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {

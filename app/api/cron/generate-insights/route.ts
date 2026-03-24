@@ -3,9 +3,7 @@ import { db } from "@/lib/prisma";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const model = genAI.getGenerativeModel({
-    model: "gemma-3-27b-it"
-});
+const MODELS = ["gemma-3-27b-it"];
 
 export async function GET(request: Request) {
     // Vercel secures cron routes using a secret if CRON_SECRET is configured
@@ -48,8 +46,25 @@ export async function GET(request: Request) {
           Include at least 5 skills and trends.
         `;
 
-            const res = await model.generateContent(prompt);
-            const text = res.response?.candidates?.[0].content.parts[0].text || "";
+            let text = "";
+            let error = null;
+
+            for (const modelName of MODELS) {
+                try {
+                    const model = genAI.getGenerativeModel({ model: modelName });
+                    const result = await model.generateContent(prompt, { apiVersion: "v1beta" });
+                    text = result.response?.text() || "";
+                    if (text) break;
+                } catch (err: any) {
+                    console.error(`CRON error with model ${modelName} for ${industry}:`, err.message);
+                    error = err;
+                }
+            }
+
+            if (!text) {
+                console.error(`CRON: Failed to generate insights for ${industry} after all models.`);
+                continue;
+            }
             const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
 
             try {

@@ -7,8 +7,7 @@ import { ClerkProvider } from '@clerk/nextjs'
 import { dark } from '@clerk/themes'
 import { Toaster } from "@/components/ui/sonner";
 import { checkUser } from "@/lib/checkUser";
-import KaiAssistant from "@/components/kai-assistant";
-import GlobalCanvas from "@/components/3d/global-canvas";
+import { GlobalWidgets } from "@/components/global-widgets";
 
 export const runtime = "nodejs";
 
@@ -36,20 +35,20 @@ export default async function RootLayout({
   console.log(">>> [DEBUG] checkUser passed.");
 
   return (
-    <ClerkProvider appearance={{
-      baseTheme: dark
-    }}>
-      <html lang="en" suppressHydrationWarning>
-        <body
-          className={`${spaceGrotesk.variable} font-sans`}
-        >
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${spaceGrotesk.variable} font-sans`}
+      >
+        <ClerkProvider appearance={{
+          baseTheme: dark
+        }}>
           <ThemeProvider
             attribute="class"
             defaultTheme="dark"
             forcedTheme="dark"
             disableTransitionOnChange
           >
-            <GlobalCanvas />
+            <GlobalWidgets />
             {/* header */}
             <Header />
             <main className="min-h-screen relative overflow-hidden">
@@ -78,11 +77,10 @@ export default async function RootLayout({
                 </div>
               </div>
             </footer>
-            <KaiAssistant />
-          </ThemeProvider>
-        </body>
-      </html>
-    </ClerkProvider>
 
+          </ThemeProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }

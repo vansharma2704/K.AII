@@ -5,9 +5,7 @@ import { auth } from "@clerk/nextjs/server";
 import { GoogleGenerativeAI } from "@google/generative-ai"
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
-const model = genAI.getGenerativeModel({
-    model: "gemma-3-27b-it"
-})
+const MODELS = ["gemma-3-27b-it"];
 
 export const generateAIInsight = async (industry: string | null) => {
 
@@ -58,9 +56,32 @@ export const generateAIInsight = async (industry: string | null) => {
           
           Return ONLY the raw JSON.
         `;
-    const result = await model.generateContent(prompt)
-    const response = result.response
-    const text = response.text()
+    let text = "";
+    let error = null;
+
+    for (const modelName of MODELS) {
+        try {
+            const model = genAI.getGenerativeModel({ model: modelName });
+
+            // Implement 25s timeout
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error(`AI Timeout (${modelName})`)), 25000)
+            );
+
+            const resultPromise = model.generateContent(prompt, { apiVersion: "v1beta" });
+            const result = await Promise.race([resultPromise, timeoutPromise]) as any;
+
+            text = result.response.text();
+            if (text) break;
+        } catch (err: any) {
+            console.error(`Dashboard insight error with model ${modelName}:`, err.message);
+            error = err;
+        }
+    }
+
+    if (!text) {
+        throw new Error("Failed to generate industry insights: " + (error?.message || "AI returned empty response."));
+    }
     
     try {
         // Robust JSON extraction: Find the first '{' and last '}'
@@ -100,16 +121,8 @@ export async function getIndustryInsights() {
         const now = new Date();
         const nextUpdate = new Date(user.industryInsight.nextUpdate);
         
-        // A better check for stale data: if the industry isn't tech, but the roles are tech-focused
-        const roles = (user.industryInsight.salaryRanges as any[])?.map(r => r.role.toLowerCase()) || [];
-        const isTechIndustry = user.industry?.toLowerCase().includes('tech') || user.industry?.toLowerCase().includes('software');
-        const hasTechRoles = roles.some(r => r.includes('developer') || r.includes('engineer') || r.includes('devops'));
-        
-        // Content depth check: if we have very few trends or skills (legacy data)
-        const hasLowDepth = user.industryInsight.keyTrends.length < 4 || user.industryInsight.recommendedSkills.length < 5;
-
-        // If (stale data) or (low depth) or nextUpdate date has passed, regenerate insights
-        if ((!isTechIndustry && hasTechRoles) || hasLowDepth || now >= nextUpdate) {
+        // Regenerate ONLY if nextUpdate date has passed
+        if (now >= nextUpdate) {
             const insights = await generateAIInsight(user.industry);
             const updatedInsight = await db.industryInsight.update({
                 where: {

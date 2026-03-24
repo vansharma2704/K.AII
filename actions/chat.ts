@@ -4,7 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const model = genAI.getGenerativeModel({ model: "gemma-3-27b-it" });
+const MODELS = ["gemma-3-27b-it"];
 
 export async function chatWithAssistant(message: string, context: any) {
   const { userId } = await auth();
@@ -28,11 +28,31 @@ Rules:
 - Keep the response under 150 words.
   `.trim();
 
-  try {
-    const result = await model.generateContent(prompt);
-    return result.response.text();
-  } catch (error) {
-    console.error("Chat error:", error);
-    throw new Error("Failed to get response from AI assistant.");
+  let text = "";
+  let error = null;
+
+  for (const modelName of MODELS) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+
+      // Implement 25s timeout
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error(`AI Timeout (${modelName})`)), 25000)
+      );
+
+      const resultPromise = model.generateContent(prompt, { apiVersion: "v1beta" });
+      const result = await Promise.race([resultPromise, timeoutPromise]) as any;
+
+      text = result.response.text();
+      if (text) break;
+    } catch (err: any) {
+      console.error(`Chat error with model ${modelName}:`, err.message);
+      error = err;
+    }
   }
+
+  if (!text) {
+    throw new Error("Failed to get response from AI assistant: " + (error?.message || "AI returned empty response."));
+  }
+  return text;
 }

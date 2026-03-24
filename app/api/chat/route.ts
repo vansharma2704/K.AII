@@ -4,7 +4,7 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const model = genAI.getGenerativeModel({ model: "gemma-3-27b-it" });
+const MODELS = ["gemma-3-27b-it"];
 
 export async function POST(req: Request) {
   try {
@@ -68,9 +68,28 @@ Guidelines:
       })),
     ];
 
-    const result = await model.generateContentStream({
-      contents,
-    });
+    let result = null;
+    let error = null;
+
+    for (const modelName of MODELS) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        result = await model.generateContentStream({
+          contents,
+        }, { apiVersion: "v1beta" });
+        if (result) break;
+      } catch (err: any) {
+        console.error(`Chat error with model ${modelName}:`, err.message);
+        error = err;
+      }
+    }
+
+    if (!result) {
+      return new Response(JSON.stringify({ error: "Failed to start chat: " + (error?.message || "All models failed") }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     const stream = new ReadableStream({
       async start(controller) {

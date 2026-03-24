@@ -2,7 +2,7 @@ const path = require('path');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ['@prisma/client'],
+  serverExternalPackages: ['@prisma/client', 'pdf-parse', 'mammoth'],
   images: {
     remotePatterns: [
       {
@@ -10,6 +10,11 @@ const nextConfig = {
         hostname: "randomuser.me"
       }
     ]
+  },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
   },
   outputFileTracingRoot: path.resolve(__dirname),
 }

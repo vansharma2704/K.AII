@@ -11,6 +11,7 @@ const GlobalCanvas = () => {
       <Canvas
         camera={{ position: [0, 15, 25], fov: 60 }}
         dpr={[1, 2]}
+        performance={{ min: 0.5 }}
         gl={{ 
             powerPreference: "high-performance", 
             antialias: false,

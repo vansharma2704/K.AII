@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const GEMINI_API_KEY = "AIzaSyDbq-LuNPZTjk8bfTuBzY9ZfCmPSzPmIX8";
 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemma-3-27b-it" });
+const MODELS = ["gemma-3-27b-it"];
 
 async function testGen() {
   const industry = "tech-software-development";
@@ -44,13 +44,29 @@ async function testGen() {
           Return ONLY the raw JSON.
         `;
 
-  try {
-    console.log(`Generating insights for: ${industry}`);
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
-    console.log('RAW AI TEXT:');
-    console.log(text);
+  let text = "";
+  let error = null;
+
+  for (const modelName of MODELS) {
+    try {
+      console.log(`Testing model: ${modelName}`);
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(prompt);
+      text = result.response.text();
+      if (text) break;
+    } catch (err: any) {
+      console.error(`Error with model ${modelName}:`, err.message);
+      error = err;
+    }
+  }
+
+  if (!text) {
+    console.error('ALL MODELS FAILED:', error?.message);
+    process.exit(1);
+  }
+
+  console.log('RAW AI TEXT:');
+  console.log(text);
     
     const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
     try {

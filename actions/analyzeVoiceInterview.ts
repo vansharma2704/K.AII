@@ -6,9 +6,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Prisma } from "@prisma/client";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const model = genAI.getGenerativeModel({
-    model: "gemma-3-27b-it"
-});
+const MODELS = ["gemma-3-27b-it"];
 
 export async function analyzeVoiceInterview(
     transcript: string,
@@ -65,69 +63,72 @@ export async function analyzeVoiceInterview(
   ${transcript}
   `;
 
-    try {
-        console.log("Sending prompt to Gemini...");
-        const result = await model.generateContent(prompt);
-        let text = result.response.text();
-        console.log("Raw Response from Gemini:", text);
+    let text = "";
+    let error = null;
+
+    for (const modelName of MODELS) {
+        try {
+            const model = genAI.getGenerativeModel({ model: modelName });
+
+            // Implement 25s timeout
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error(`AI Timeout (${modelName})`)), 25000)
+            );
+
+            const resultPromise = model.generateContent(prompt, { apiVersion: "v1beta" });
+            const result = await Promise.race([resultPromise, timeoutPromise]) as any;
+
+            text = result.response.text();
+            if (text) break;
+        } catch (err: any) {
+            console.error(`Voice analysis error with model ${modelName}:`, err.message);
+            error = err;
+        }
+    }
+
+    if (!text) {
+        throw new Error("Failed to analyze transcript: " + (error?.message || "AI returned empty response."));
+    }
+    console.log("Raw Response from Gemini:", text);
 
         // Strip out any markdown code blocks or hidden characters that Gemini might occasionally inject
         text = text.replace(/```json/gi, "").replace(/```/g, "").trim();
         console.log("Cleaned Text:", text);
 
-        let metrics;
-        try {
-            metrics = JSON.parse(text);
-            console.log("Parsed Metrics:", metrics);
-        } catch (parseError) {
-            console.error("Failed to parse Gemini JSON:", parseError);
-            console.log("Falling back to default metrics due to JSON parse error.");
-            metrics = {
-                technicalScore: 0,
-                communicationScore: 0,
-                confidenceScore: 0,
-                strengths: ["Failed to generate specific strengths."],
-                improvements: ["Failed to generate specific improvements."],
-                keyPoints: ["Could not parse the AI response."]
-            };
-        }
-
-        const voiceInterview = await db.voiceInterview.create({
-            data: {
-                userId: user.id,
-                targetRole,
-                language,
-                transcript,
-                chatHistory: chatHistory as unknown as Prisma.InputJsonValue[],
-                status: "COMPLETED",
-                technicalScore: parseFloat(metrics?.technicalScore) || 50,
-                communicationScore: parseFloat(metrics?.communicationScore) || 50,
-                confidenceScore: parseFloat(metrics?.confidenceScore) || 50,
-                strengths: Array.isArray(metrics?.strengths) ? metrics.strengths : ["Failed to generate specific strengths."],
-                improvements: Array.isArray(metrics?.improvements) ? metrics.improvements : ["Failed to generate specific improvements."],
-                keyPoints: Array.isArray(metrics?.keyPoints) ? metrics.keyPoints : ["Could not parse the AI response."],
-                detailedFeedback: "See bullet points."
-            }
-        });
-
-        return voiceInterview.id;
-    } catch (error) {
-        console.error("Failed to analyze transcript ERROR START =========");
-        console.error(error);
-        console.error("Failed to analyze transcript ERROR END ===========");
-
-        // Graceful degradation: save the transcript anyway but mark as failed processing
-        const voiceInterview = await db.voiceInterview.create({
-            data: {
-                userId: user.id,
-                targetRole,
-                language,
-                transcript,
-                chatHistory: chatHistory as unknown as Prisma.InputJsonValue[],
-                status: "FAILED",
-                detailedFeedback: "The AI failed to process the interview metrics, but your transcript was saved."
-            }
-        });
-        return voiceInterview.id;
+    let metrics;
+    try {
+        metrics = JSON.parse(text);
+        console.log("Parsed Metrics:", metrics);
+    } catch (parseError) {
+        console.error("Failed to parse Gemini JSON:", parseError);
+        console.log("Falling back to default metrics due to JSON parse error.");
+        metrics = {
+            technicalScore: 0,
+            communicationScore: 0,
+            confidenceScore: 0,
+            strengths: ["Failed to generate specific strengths."],
+            improvements: ["Failed to generate specific improvements."],
+            keyPoints: ["Could not parse the AI response."]
+        };
     }
+
+    const voiceInterview = await db.voiceInterview.create({
+        data: {
+            userId: user.id,
+            targetRole,
+            language,
+            transcript,
+            chatHistory: chatHistory as unknown as Prisma.InputJsonValue[],
+            status: "COMPLETED",
+            technicalScore: parseFloat(metrics?.technicalScore) || 50,
+            communicationScore: parseFloat(metrics?.communicationScore) || 50,
+            confidenceScore: parseFloat(metrics?.confidenceScore) || 50,
+            strengths: Array.isArray(metrics?.strengths) ? metrics.strengths : ["Failed to generate specific strengths."],
+            improvements: Array.isArray(metrics?.improvements) ? metrics.improvements : ["Failed to generate specific improvements."],
+            keyPoints: Array.isArray(metrics?.keyPoints) ? metrics.keyPoints : ["Could not parse the AI response."],
+            detailedFeedback: "See bullet points."
+        }
+    });
+
+    return voiceInterview.id;
 }

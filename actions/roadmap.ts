@@ -5,7 +5,7 @@ import { auth } from "@clerk/nextjs/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const MODELS = ['gemma-3-27b-it', 'gemini-1.5-pro', 'gemini-1.5-flash'];
+const MODELS = ["gemma-3-27b-it"];
 
 export async function generateCareerRoadmap(targetRole: string) {
     const { userId } = await auth();
@@ -59,29 +59,33 @@ export async function generateCareerRoadmap(targetRole: string) {
     `;
 
     let text = "";
-    
-    // Retry logic
-    for (let attempt = 0; attempt < 3; attempt++) {
-        for (const modelName of MODELS) {
-            try {
-                const model = genAI.getGenerativeModel({ model: modelName });
-                const result = await model.generateContent(prompt);
-                text = result.response.text();
-                text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-                
-                // Validate if parseable
-                JSON.parse(text);
-                break; // Break model loop
-            } catch (err: any) {
-                console.warn(`Model ${modelName} failed on attempt ${attempt + 1}: ${err.message.slice(0, 50)}`);
-                text = ""; // Reset
-            }
+    let error = null;
+
+    for (const modelName of MODELS) {
+        try {
+            const model = genAI.getGenerativeModel({ model: modelName });
+            
+            // Implement 25s timeout
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error(`AI Timeout (${modelName})`)), 25000)
+            );
+            
+            const resultPromise = model.generateContent(prompt, { apiVersion: "v1beta" });
+            const result = await Promise.race([resultPromise, timeoutPromise]) as any;
+            
+            text = result.response.text();
+            text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+            // Validate if parseable
+            JSON.parse(text);
+            if (text) break;
+        } catch (err: any) {
+            console.error(`Roadmap error with model ${modelName}:`, err.message);
+            error = err;
         }
-        if (text) break; // Break retry loop
     }
 
     if (!text) {
-        throw new Error("Failed to generate roadmap from AI. Please try again.");
+        throw new Error("Failed to generate career roadmap: " + (error?.message || "AI returned empty response."));
     }
 
     try {

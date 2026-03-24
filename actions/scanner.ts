@@ -7,46 +7,82 @@ import mammoth from "mammoth";
 import { db } from "@/lib/prisma";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const model = genAI.getGenerativeModel({ model: "gemma-3-27b-it" });
+const MODELS = ["gemma-3-27b-it"];
 
 export async function analyzeResume(formData: FormData) {
-  const { userId: clerkUserId } = await auth();
-  if (!clerkUserId) throw new Error("User not authenticated");
+  try {
+    const { userId: clerkUserId } = await auth();
+    console.log("Scanner: Starting analysis for user:", clerkUserId);
+    
+    if (!clerkUserId) throw new Error("User not authenticated");
 
-  const user = await db.user.findUnique({ where: { clerkUserId } });
-  if (!user) throw new Error("User not found");
+    const user = await db.user.findUnique({ where: { clerkUserId } });
+    if (!user) throw new Error("User not found");
 
-  const file = formData.get("file") as File;
-  if (!file) throw new Error("No file uploaded");
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  let resumeText = "";
-
-  if (file.type === "application/pdf") {
-    try {
-      const data = await pdf(buffer);
-      resumeText = data.text;
-    } catch (e: any) {
-      throw new Error("Failed to read PDF file. It might be corrupted or protected.");
+    console.log("Scanner: Attempting to get 'resumeFile' from formData...");
+    const file = formData.get("resumeFile") as File;
+    console.log("Scanner: File object from formData:", file ? "Exists" : "MISSING");
+    
+    if (!file || file.size === 0) {
+      console.error("Scanner Error: No file found in FormData or file is empty");
+      throw new Error("Resume file not found in the upload. Please select a file and try again.");
     }
-  } else if (
-    file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-  ) {
-    try {
-      const data = await mammoth.extractRawText({ buffer });
-      resumeText = data.value;
-    } catch (e: any) {
-      throw new Error("Failed to read DOCX file. It might be corrupted or protected.");
+
+    console.log("Scanner: File properties -> Name:", file.name, "Type:", file.type, "Size:", file.size);
+
+    console.log("Scanner: Reading file content via stream...");
+    const chunks = [];
+    const reader = file.stream().getReader();
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
     }
-  } else {
-    throw new Error("Unsupported file type. Please upload a PDF or DOCX.");
-  }
+    
+    const buffer = Buffer.concat(chunks.map(chunk => Buffer.from(chunk)));
+    console.log("Scanner: Data converted to Buffer, total length:", buffer.length);
+    
+    if (buffer.length === 0) {
+      throw new Error("The uploaded file appears to be empty. Please check the file and try again.");
+    }
 
-  if (!resumeText || resumeText.trim().length < 50) {
-    throw new Error("The resume appears to be empty or too short for analysis.");
-  }
+    let resumeText = "";
 
-  const prompt = `
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    const isDocx = file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || file.name.toLowerCase().endsWith(".docx");
+
+    if (isPdf) {
+      try {
+        console.log("Scanner: Parsing PDF...");
+        const data = await pdf(buffer);
+        console.log("Scanner: PDF parsed successfully, text length:", data.text?.length);
+        resumeText = data.text;
+      } catch (e: any) {
+        console.error("Scanner: PDF parse failed:", e);
+        throw new Error("Failed to read PDF file. Please ensure it's not password protected.");
+      }
+    } else if (isDocx) {
+      try {
+        console.log("Scanner: Parsing DOCX...");
+        const data = await mammoth.extractRawText({ buffer });
+        console.log("Scanner: DOCX parsed successfully, text length:", data.value?.length);
+        resumeText = data.value;
+      } catch (e: any) {
+        console.error("Scanner: DOCX parse failed:", e);
+        throw new Error("Failed to read DOCX file. It might be corrupted.");
+      }
+    } else {
+      console.warn("Scanner: Unsupported file type detected ->", file.type, "Name:", file.name);
+      throw new Error("Unsupported file format. Please upload a PDF or DOCX file.");
+    }
+
+    if (!resumeText || resumeText.trim().length < 50) {
+      console.warn("Scanner: Resume text too short:", resumeText?.length);
+      throw new Error("The resume appears to be empty or too short for analysis.");
+    }
+
+    const prompt = `
 You are an expert ATS (Applicant Tracking System) analyst and career coach.
 Analyze the following resume and return a comprehensive JSON analysis.
 
@@ -86,9 +122,36 @@ Guidelines:
 - Return ONLY the JSON, nothing else.
   `.trim();
 
-  try {
-    const result = await model.generateContent(prompt);
-    const rawText = result.response.text().trim();
+    let rawText = "";
+    let error = null;
+
+    for (const modelName of MODELS) {
+      try {
+        console.log(`Scanner: Calling AI with ${modelName}...`);
+        const model = genAI.getGenerativeModel({ model: modelName });
+        
+        // Implement 25s timeout
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error(`AI Timeout (${modelName})`)), 25000)
+        );
+        
+        const resultPromise = model.generateContent(prompt, { apiVersion: "v1beta" });
+        const result = await Promise.race([resultPromise, timeoutPromise]) as any;
+        
+        rawText = result.response.text().trim();
+        if (rawText) {
+          console.log(`Scanner: AI responded successfully using ${modelName}`);
+          break;
+        }
+      } catch (err: any) {
+        console.error(`Scanner error with model ${modelName}:`, err.message);
+        error = err;
+      }
+    }
+
+    if (!rawText) {
+      throw new Error("Failed to analyze resume: " + (error?.message || "AI returned empty response."));
+    }
 
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
