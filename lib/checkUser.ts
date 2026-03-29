@@ -1,32 +1,36 @@
 import { currentUser } from "@clerk/nextjs/server"
 import { db } from "./prisma";
 
-export const checkUser= async()=>{
+export const checkUser = async () => {
     const user = await currentUser();
-    if(!user){
+    if (!user) {
         return null;
     }
 
-    try{
-      const loggedInUser=  await db.user.findUnique({
-            where:{
-                clerkUserId:user.id
+    try {
+        const loggedInUser = await db.user.findUnique({
+            where: {
+                clerkUserId: user.id
             }
-        })
-        if(loggedInUser){
-            return loggedInUser
+        });
+        
+        if (loggedInUser) {
+            return loggedInUser;
         }
-        const name =`${user.firstName} ${user.lastName}`
+
+        const name = `${user.firstName || ''} ${user.lastName || ''}`.trim();
         const newUser = await db.user.create({
-            data:{
-                clerkUserId:user.id,
-                name,
-                imageUrl:user.imageUrl,
-                email:user.emailAddresses[0].emailAddress
+            data: {
+                clerkUserId: user.id,
+                name: name || 'User',
+                imageUrl: user.imageUrl,
+                email: user.emailAddresses[0].emailAddress
             }
-        })
-        return newUser
-    }catch(err:any){
-         console.log(err.message)
+        });
+        
+        return newUser;
+    } catch (err: any) {
+        console.error(">>> [PRISMA ERROR] Database connection or query failed in checkUser:", err.message);
+        throw err; // Re-throw to ensure the error is handled by the caller (RootLayout)
     }
 }

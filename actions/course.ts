@@ -6,7 +6,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { v4 as uuidv4 } from 'uuid';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const MODELS = ["gemma-3-27b-it"];
+const MODELS = ["gemma-3-27b-it", "gemini-1.5-flash"];
 
 async function generateWithRetry(prompt: string): Promise<string> {
     let text = "";

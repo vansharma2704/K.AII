@@ -6,7 +6,7 @@ import { createClient as createDeepgramClient } from '@deepgram/sdk';
 import { v4 as uuidv4 } from 'uuid';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const MODELS = ['gemma-3-27b-it'];
+const MODELS = ['gemma-3-27b-it', 'gemini-1.5-flash'];
 
 async function generateWithRetry(prompt: string, maxRetries = 3): Promise<string> {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -42,8 +42,8 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 3
 }
 
 const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!; // Use Service Role Key for backend bypass
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const deepgram = createDeepgramClient(process.env.DEEPGRAM_API_KEY || '');
 
 export const maxDuration = 120;
@@ -120,75 +120,92 @@ Example format:
             await supabase.storage.createBucket('course-assets', { public: true, fileSizeLimit: 52428800 });
         }
 
-        // 3. Process slides — TTS is sequential (Deepgram connection safety), DB saves are batched
+        // 3. Process slides
         const generatedSlides = [];
 
-        for (const slide of slidesJson) {
-            const { slideIndex, narrationText, heading, bulletPoints, codeSnippet } = slide;
+        try {
+            for (const slide of slidesJson) {
+                const { slideIndex, narrationText, heading, bulletPoints, codeSnippet } = slide;
 
-            // TTS with retry (sequential — Deepgram can't handle many parallel connections)
-            let audioBuffer: ArrayBuffer | null = null;
-            for (let attempt = 0; attempt < 2; attempt++) {
-                try {
-                    const ttsRes = await fetchWithTimeout(
-                        'https://api.deepgram.com/v1/speak?model=aura-asteria-en',
-                        {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Token ${process.env.DEEPGRAM_API_KEY}`
+                // TTS with retry
+                let audioBuffer: ArrayBuffer | null = null;
+                for (let attempt = 0; attempt < 2; attempt++) {
+                    try {
+                        const ttsRes = await fetchWithTimeout(
+                            'https://api.deepgram.com/v1/speak?model=aura-asteria-en',
+                            {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Token ${process.env.DEEPGRAM_API_KEY}`
+                                },
+                                body: JSON.stringify({ text: narrationText })
                             },
-                            body: JSON.stringify({ text: narrationText })
-                        },
-                        30000
-                    );
-                    if (!ttsRes.ok) throw new Error(`TTS ${ttsRes.status}`);
-                    audioBuffer = await ttsRes.arrayBuffer();
-                    break;
-                } catch (e: any) {
-                    if (attempt === 1) throw e;
-                    await new Promise(r => setTimeout(r, 2000));
+                            30000
+                        );
+                        if (!ttsRes.ok) throw new Error(`TTS Status: ${ttsRes.status}`);
+                        audioBuffer = await ttsRes.arrayBuffer();
+                        break;
+                    } catch (e: any) {
+                        if (attempt === 1) throw e;
+                        await new Promise(r => setTimeout(r, 2000));
+                    }
                 }
-            }
-            if (!audioBuffer) throw new Error(`TTS failed for slide ${slideIndex}`);
+                
+                if (!audioBuffer) throw new Error(`TTS failed for slide ${slideIndex}`);
 
-            // Upload (fast)
-            const audioFileName = `course-${courseId}-ch-${chapterId}-s${slideIndex}-${Date.now()}.mp3`;
-            const { error: uploadError } = await supabase.storage
-                .from('course-assets')
-                .upload(audioFileName, audioBuffer, { contentType: 'audio/mpeg', cacheControl: '3600', upsert: true });
-            if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+                // Upload to Supabase
+                const audioFileName = `course-${courseId}-ch-${chapterId}-s${slideIndex}-${Date.now()}.mp3`;
+                const { error: uploadError } = await supabase.storage
+                    .from('course-assets')
+                    .upload(audioFileName, audioBuffer, { contentType: 'audio/mpeg', cacheControl: '3600', upsert: true });
+                
+                if (uploadError) throw new Error(`Supabase Upload failed: ${uploadError.message}`);
 
-            const audioUrl = supabase.storage.from('course-assets').getPublicUrl(audioFileName).data.publicUrl;
+                const audioUrl = supabase.storage.from('course-assets').getPublicUrl(audioFileName).data.publicUrl;
 
-            // Captions with retry (sequential)
-            let words: any[] = [];
-            for (let capAttempt = 0; capAttempt < 2; capAttempt++) {
+                // Captions with Deepgram
+                let words: any[] = [];
+                for (let capAttempt = 0; capAttempt < 2; capAttempt++) {
+                    try {
+                        await new Promise(r => setTimeout(r, 1000)); // Rate limit safety
+                        const { result, error } = await deepgram.listen.prerecorded.transcribeUrl(
+                            { url: audioUrl },
+                            { model: 'nova-2', smart_format: true, words: true }
+                        );
+                        if (!error) {
+                            words = result?.results?.channels[0]?.alternatives[0]?.words || [];
+                            if (words.length > 0) break;
+                        }
+                    } catch (e: any) {
+                        console.warn(`Caption attempt ${capAttempt + 1} failed for slide ${slideIndex}:`, e?.message);
+                    }
+                }
+
+                // Save to DB (Prisma)
                 try {
-                    await new Promise(r => setTimeout(r, 800 + capAttempt * 800));
-                    const { result, error } = await deepgram.listen.prerecorded.transcribeUrl(
-                        { url: audioUrl },
-                        { model: 'nova-2', smart_format: true, words: true }
-                    );
-                    if (!error) {
-                        words = result?.results?.channels[0]?.alternatives[0]?.words || [];
-                        if (words.length > 0) break;
-                    }
-                } catch (e: any) {
-                    console.warn(`Caption attempt ${capAttempt + 1} slide ${slideIndex}: ${e?.message}`);
+                    const savedSlide = await db.courseSlide.create({
+                        data: {
+                            id: uuidv4(),
+                            courseId,
+                            chapterId,
+                            slideIndex,
+                            slideData: { heading, bulletPoints, codeSnippet },
+                            narrationText,
+                            audioUrl,
+                            captions: words as any,
+                            revealData: {}
+                        }
+                    });
+                    generatedSlides.push(savedSlide);
+                } catch (dbErr: any) {
+                    console.error(`>>> [PRISMA ERROR] Failed to save slide ${slideIndex} to database:`, dbErr.message);
+                    throw new Error(`Database error while saving slide ${slideIndex}: ${dbErr.message}`);
                 }
             }
-
-            // Save to DB
-            generatedSlides.push(
-                await db.courseSlide.create({
-                    data: {
-                        id: uuidv4(), courseId, chapterId, slideIndex,
-                        slideData: { heading, bulletPoints, codeSnippet },
-                        narrationText, audioUrl, captions: words as any, revealData: {}
-                    }
-                })
-            );
+        } catch (err: any) {
+             console.error("Critical error during slide processing:", err.message);
+             throw err;
         }
 
         return NextResponse.json({ success: true, slides: generatedSlides });
