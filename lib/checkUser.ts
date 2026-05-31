@@ -2,7 +2,14 @@ import { currentUser } from "@clerk/nextjs/server"
 import { db } from "./prisma";
 
 export const checkUser = async () => {
-    const user = await currentUser();
+    let user;
+    try {
+        user = await currentUser();
+    } catch (err: any) {
+        console.error(">>> [CLERK ERROR] Failed to fetch current user from Clerk API:", err.message || err);
+        return null;
+    }
+
     if (!user) {
         return null;
     }
@@ -31,6 +38,6 @@ export const checkUser = async () => {
         return newUser;
     } catch (err: any) {
         console.error(">>> [PRISMA ERROR] Database connection or query failed in checkUser:", err.message);
-        throw err; // Re-throw to ensure the error is handled by the caller (RootLayout)
+        return null;
     }
 }

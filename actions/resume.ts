@@ -2,10 +2,7 @@
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
-import { GoogleGenerativeAI } from "@google/generative-ai"
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
-const MODELS = ["gemma-3-27b-it"];
+import { genAI, GEMINI_MODELS } from "@/lib/gemini";
 export async function saveResume(content: any, formData?: any) {
   try {
     const { userId } = await auth();
@@ -157,7 +154,7 @@ export async function improveWithAi({ current, type, organization, title }: any)
   let improvedContent = "";
   let error = null;
 
-  for (const modelName of MODELS) {
+  for (const modelName of GEMINI_MODELS) {
     try {
       const model = genAI.getGenerativeModel({ model: modelName });
       
@@ -250,7 +247,7 @@ Rules:
   let text = "";
   let error = null;
 
-  for (const modelName of MODELS) {
+  for (const modelName of GEMINI_MODELS) {
     try {
       const model = genAI.getGenerativeModel({ model: modelName });
       

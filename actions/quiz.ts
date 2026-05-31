@@ -2,10 +2,7 @@
 
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const MODELS = ["gemma-3-27b-it"];
+import { genAI, GEMINI_MODELS } from "@/lib/gemini";
 
 export async function generateQuizQuestions(topic: string, mode: string) {
     const { userId } = await auth();
@@ -44,7 +41,7 @@ export async function generateQuizQuestions(topic: string, mode: string) {
     // Retry logic
     let error = null;
     for (let attempt = 0; attempt < 1; attempt++) { // Reduced retry for production feel
-        for (const modelName of MODELS) {
+        for (const modelName of GEMINI_MODELS) {
             try {
                 const model = genAI.getGenerativeModel({ model: modelName });
                 
@@ -138,7 +135,7 @@ export async function submitQuizAndGetFeedback(
         `;
 
         try {
-            for (const modelName of MODELS) {
+            for (const modelName of GEMINI_MODELS) {
                 try {
                     const model = genAI.getGenerativeModel({ model: modelName });
                     

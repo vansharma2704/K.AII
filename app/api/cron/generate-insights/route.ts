@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/prisma";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const MODELS = ["gemma-3-27b-it"];
+import { genAI, GEMINI_MODELS } from "@/lib/gemini";
 
 export async function GET(request: Request) {
     // Vercel secures cron routes using a secret if CRON_SECRET is configured
@@ -49,7 +46,7 @@ export async function GET(request: Request) {
             let text = "";
             let error = null;
 
-            for (const modelName of MODELS) {
+            for (const modelName of GEMINI_MODELS) {
                 try {
                     const model = genAI.getGenerativeModel({ model: modelName });
                     const result = await model.generateContent(prompt, { apiVersion: "v1beta" });

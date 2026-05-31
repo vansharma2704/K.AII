@@ -2,9 +2,7 @@
 
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
-const MODELS = ["gemma-3-27b-it"];
+import { genAI, GEMINI_MODELS } from "@/lib/gemini";
 
 export async function generateCoverLetter(data: any) {
   const { userId } = await auth();
@@ -39,7 +37,7 @@ export async function generateCoverLetter(data: any) {
   let content = "";
   let error = null;
 
-  for (const modelName of MODELS) {
+  for (const modelName of GEMINI_MODELS) {
     try {
       const model = genAI.getGenerativeModel({ model: modelName });
 

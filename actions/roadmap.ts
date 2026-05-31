@@ -2,10 +2,7 @@
 
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const MODELS = ["gemma-3-27b-it"];
+import { genAI, GEMINI_MODELS } from "@/lib/gemini";
 
 export async function generateCareerRoadmap(targetRole: string) {
     const { userId } = await auth();
@@ -59,9 +56,9 @@ export async function generateCareerRoadmap(targetRole: string) {
     `;
 
     let text = "";
-    let error = null;
+    const errors: string[] = [];
 
-    for (const modelName of MODELS) {
+    for (const modelName of GEMINI_MODELS) {
         try {
             const model = genAI.getGenerativeModel({ model: modelName });
             
@@ -80,12 +77,12 @@ export async function generateCareerRoadmap(targetRole: string) {
             if (text) break;
         } catch (err: any) {
             console.error(`Roadmap error with model ${modelName}:`, err.message);
-            error = err;
+            errors.push(`${modelName} error: ${err.message}`);
         }
     }
 
     if (!text) {
-        throw new Error("Failed to generate career roadmap: " + (error?.message || "AI returned empty response."));
+        throw new Error("Failed to generate career roadmap: " + (errors.join(" | ") || "AI returned empty response."));
     }
 
     try {

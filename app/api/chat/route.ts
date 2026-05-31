@@ -1,10 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { PrismaClient } from "@prisma/client";
+import { genAI, GEMINI_MODELS } from "@/lib/gemini";
 
 const prisma = new PrismaClient();
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const MODELS = ["gemma-3-27b-it"];
 
 export async function POST(req: Request) {
   try {
@@ -71,7 +69,7 @@ Guidelines:
     let result = null;
     let error = null;
 
-    for (const modelName of MODELS) {
+    for (const modelName of GEMINI_MODELS) {
       try {
         const model = genAI.getGenerativeModel({ model: modelName });
         result = await model.generateContentStream({

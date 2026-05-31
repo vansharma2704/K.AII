@@ -2,11 +2,8 @@
 
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Prisma } from "@prisma/client";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const MODELS = ["gemma-3-27b-it"];
+import { genAI, GEMINI_MODELS } from "@/lib/gemini";
 
 export async function analyzeVoiceInterview(
     transcript: string,
@@ -66,7 +63,7 @@ export async function analyzeVoiceInterview(
     let text = "";
     let error = null;
 
-    for (const modelName of MODELS) {
+    for (const modelName of GEMINI_MODELS) {
         try {
             const model = genAI.getGenerativeModel({ model: modelName });
 

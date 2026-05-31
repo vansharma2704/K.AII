@@ -1,13 +1,10 @@
 "use server"
 
 import { auth } from "@clerk/nextjs/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import pdf from "pdf-parse";
 import mammoth from "mammoth";
 import { db } from "@/lib/prisma";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const MODELS = ["gemma-3-27b-it"];
+import { genAI, GEMINI_MODELS } from "@/lib/gemini";
 
 export async function analyzeResume(formData: FormData) {
   try {
@@ -125,7 +122,7 @@ Guidelines:
     let rawText = "";
     let error = null;
 
-    for (const modelName of MODELS) {
+    for (const modelName of GEMINI_MODELS) {
       try {
         console.log(`Scanner: Calling AI with ${modelName}...`);
         const model = genAI.getGenerativeModel({ model: modelName });

@@ -1,21 +1,15 @@
+import 'dotenv/config';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createClient } from '@deepgram/sdk';
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { genAI, GEMINI_MODELS } from '../lib/gemini';
 import axios from 'axios';
-import dotenv from 'dotenv';
 import { v4 as uuidv4 } from 'uuid';
-
-dotenv.config();
 
 const wss = new WebSocketServer({ port: 8080 });
 
-// Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const MODELS = ["gemma-3-27b-it"];
-
 async function generateWithFallback(prompt: string, isChat: boolean = false, history: any[] = []): Promise<string> {
     let error = null;
-    for (const modelName of MODELS) {
+    for (const modelName of GEMINI_MODELS) {
         try {
             const model = genAI.getGenerativeModel({ model: modelName });
             if (isChat) {

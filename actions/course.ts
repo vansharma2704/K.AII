@@ -2,17 +2,14 @@
 
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { v4 as uuidv4 } from 'uuid';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const MODELS = ["gemma-3-27b-it", "gemini-1.5-flash"];
+import { genAI, GEMINI_MODELS } from "@/lib/gemini";
 
 async function generateWithRetry(prompt: string): Promise<string> {
     let text = "";
-    let error = null;
+    const errors: string[] = [];
 
-    for (const modelName of MODELS) {
+    for (const modelName of GEMINI_MODELS) {
         try {
             const model = genAI.getGenerativeModel({ model: modelName });
 
@@ -29,11 +26,11 @@ async function generateWithRetry(prompt: string): Promise<string> {
             if (text) return text;
         } catch (err: any) {
             console.error(`Course generation error with model ${modelName}:`, err.message);
-            error = err;
+            errors.push(`${modelName} error: ${err.message}`);
         }
     }
 
-    throw new Error("Failed to generate course: " + (error?.message || "AI returned empty response."));
+    throw new Error("Failed to generate course: " + (errors.join(" | ") || "AI returned empty response."));
 }
 
 export async function generateCourseLayout(topic: string, level: string = "Beginner") {
