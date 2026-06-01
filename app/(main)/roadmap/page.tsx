@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import RoadmapGeneratorHero from './_components/roadmap-generator-hero'
 
 const RoadmapPage = () => {

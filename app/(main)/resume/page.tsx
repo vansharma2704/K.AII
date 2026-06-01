@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { getResume } from '@/actions/resume';
 import ResumeClient from './_components/resume-client';
 

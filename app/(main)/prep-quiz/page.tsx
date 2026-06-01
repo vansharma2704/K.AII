@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import React from 'react';
 import { motion, Variants } from "framer-motion";
 import { Sparkles, PlusCircle, Target, Award, Clock } from 'lucide-react';

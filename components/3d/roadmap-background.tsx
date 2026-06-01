@@ -1,9 +1,7 @@
 "use client";
 
-import React, { useRef, useMemo } from "react";
-import { useFrame } from "@react-three/fiber";
+import React, { useMemo } from "react";
 import { Float, Octahedron, Line } from "@react-three/drei";
-import * as THREE from "three";
 
 const Milestone = ({ position, color }: { position: [number, number, number], color: string }) => {
   return (

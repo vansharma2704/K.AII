@@ -1,6 +1,5 @@
 
 import React from 'react'
-import AuthBackground from '@/components/3d/auth-background'
 
 const AuthLayout = ({
   children,
@@ -9,9 +8,6 @@ const AuthLayout = ({
 }>) => {
   return (
     <div className='relative min-h-screen overflow-hidden w-full flex justify-center pt-24 pb-12'>
-      {/* 3D Background */}
-      <AuthBackground />
-      
       <div className="relative z-10">
         {children}
       </div>

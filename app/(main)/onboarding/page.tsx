@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { industries } from '@/data/industries'
 import React from 'react'
 import OnBoardingForm from './_components/onboarding-form'

@@ -6,7 +6,6 @@ import Header from "@/components/header";
 import { ClerkProvider } from '@clerk/nextjs'
 import { dark } from '@clerk/themes'
 import { Toaster } from "@/components/ui/sonner";
-import { checkUser } from "@/lib/checkUser";
 import { GlobalWidgets } from "@/components/global-widgets";
 
 export const runtime = "nodejs";
@@ -21,19 +20,11 @@ const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
 });
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  console.log(">>> [DEBUG] Entering RootLayout...");
-  try {
-    await checkUser();
-  } catch (e) {
-    console.error(">>> [DEBUG] checkUser failed:", e);
-  }
-  console.log(">>> [DEBUG] checkUser passed.");
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body

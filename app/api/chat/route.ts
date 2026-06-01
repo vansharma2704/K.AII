@@ -1,8 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
-import { PrismaClient } from "@prisma/client";
+import { db as prisma } from "@/lib/prisma";
 import { genAI, GEMINI_MODELS } from "@/lib/gemini";
-
-const prisma = new PrismaClient();
 
 export async function POST(req: Request) {
   try {

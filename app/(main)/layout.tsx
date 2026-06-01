@@ -1,8 +1,12 @@
 import React, { ReactNode } from 'react'
 import Sidebar from '@/components/sidebar'
 import { SignedIn } from '@clerk/nextjs'
+import { checkUser } from "@/lib/checkUser";
 
-const MainLayout = ({ children }: { children: ReactNode }) => {
+export const dynamic = "force-dynamic";
+
+const MainLayout = async ({ children }: { children: ReactNode }) => {
+  await checkUser();
 
   return (
     <div className="min-h-screen bg-transparent flex flex-col">

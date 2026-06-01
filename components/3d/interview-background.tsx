@@ -1,9 +1,7 @@
 "use client";
 
-import React, { useRef, useMemo } from "react";
-import { useFrame } from "@react-three/fiber";
+import React, { useMemo } from "react";
 import { Float, Icosahedron, MeshWobbleMaterial, Sphere } from "@react-three/drei";
-import * as THREE from "three";
 
 const NeuralNode = ({ position, color, speed }: { position: [number, number, number], color: string, speed: number }) => {
   return (

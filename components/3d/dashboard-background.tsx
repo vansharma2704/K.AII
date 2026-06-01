@@ -1,9 +1,6 @@
 "use client";
 
-import React, { useRef, useMemo } from "react";
-import { useFrame } from "@react-three/fiber";
-import { Float, Sphere, MeshDistortMaterial } from "@react-three/drei";
-import * as THREE from "three";
+import React from "react";
 
 const DashboardBackground = () => {
   return (

@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import React from 'react';
 import VoiceInterviewer from '../_components/voice-interviewer';
 import { ShieldCheck, Sparkles, Bot } from 'lucide-react';
